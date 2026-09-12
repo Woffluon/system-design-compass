@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.venv/
+.agents/
+skills-lock.json
+.DS_Store
+Thumbs.db

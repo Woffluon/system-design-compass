@@ -1,0 +1,4 @@
+interface:
+  display_name: "System Design Compass"
+  short_description: "Design, review, and evolve production systems"
+  default_prompt: "Use $system-design-compass to design, review, or evolve this production system."
