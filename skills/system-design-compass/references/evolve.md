@@ -1,6 +1,6 @@
 # Evolution and migration workflow
 
-Use this mode when a running system must change without losing correctness, availability, or reversibility.
+> Use this mode when a running system must change without losing correctness, availability, or reversibility.
 
 ## Establish current and target states
 
@@ -12,14 +12,16 @@ Name the invariants that must hold throughout—not only after—the migration. 
 
 Prefer a sequence of reversible transitions. Use the least elaborate pattern that fits:
 
-- **Expand–migrate–contract:** add compatible schema or interface, move traffic/data, then remove the old shape.
-- **Strangler transition:** intercept a bounded capability and gradually route it to a replacement.
-- **Parallel run or shadowing:** execute the new path without serving its result; compare outputs and resource behavior.
-- **Backfill plus change capture:** copy history, then converge ongoing changes before cutover.
-- **Dual read:** compare or fall back during a read-path transition; define which result is authoritative.
-- **Dual write:** use only with an explicit failure model, idempotency, reconciliation, and ownership. Two independent writes are not atomic by default.
-- **Versioned contract:** support old and new clients until measured usage permits retirement.
-- **Cell, tenant, cohort, or region rollout:** bound blast radius and expose skew before broad migration.
+| Pattern | Decision boundary |
+|---|---|
+| **Expand–migrate–contract** | add compatible schema or interface, move traffic/data, then remove the old shape. |
+| **Strangler transition** | intercept a bounded capability and gradually route it to a replacement. |
+| **Parallel run or shadowing** | execute the new path without serving its result; compare outputs and resource behavior. |
+| **Backfill plus change capture** | copy history, then converge ongoing changes before cutover. |
+| **Dual read** | compare or fall back during a read-path transition; define which result is authoritative. |
+| **Dual write** | use only with an explicit failure model, idempotency, reconciliation, and ownership. Two independent writes are not atomic by default. |
+| **Versioned contract** | support old and new clients until measured usage permits retirement. |
+| **Cell, tenant, cohort, or region rollout** | bound blast radius and expose skew before broad migration. |
 
 Avoid a big-bang cutover unless coexistence is impossible and the accepted outage/data-loss envelope is explicit.
 

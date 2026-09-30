@@ -1,6 +1,6 @@
 # Production readiness
 
-Use this reference for a full production design, review, or migration. Apply each lens in proportion to the workload's business criticality and lifecycle stage.
+> Use this reference for a full production design, review, or migration. Apply each lens in proportion to the workload's business criticality and lifecycle stage.
 
 ## Reliability and recovery
 
@@ -18,7 +18,7 @@ For every critical path define:
 
 Evaluate process crash, network delay/partition, dependency failure, saturation, bad input, bad deployment, credential loss, data corruption, operator error, and relevant zone/region loss. Do not add multi-region complexity without a recovery requirement and a tested consistency/failover model.
 
-Backups need stated scope, frequency, retention, encryption, access, restore time, and restore tests. Redundant replicas are not independent backups.
+Backups need stated scope, frequency, retention, encryption, access, restore time, and restore tests. **Redundant replicas are not independent backups.**
 
 ## Observability and operations
 
@@ -87,7 +87,7 @@ Before broad launch confirm:
 - Cost limits and anomaly detection are configured where appropriate.
 - Known risks have owners, deadlines, or explicit acceptance.
 
-Production readiness is an evidence-backed decision. A checklist with unverified boxes is not evidence.
+Production readiness is an evidence-backed decision. **A checklist with unverified boxes is not evidence.**
 
 ## Primary references
 

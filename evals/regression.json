@@ -1,0 +1,102 @@
+{
+  "name": "regression",
+  "cases": [
+    {
+      "id": "ambiguous-greenfield",
+      "setup": "No repository. The product is important, but no scale, criticality, delivery guarantees or retention have been supplied. Interaction is unavailable in this single-turn exercise.",
+      "prompt": "Design a multi-tenant webhook delivery platform.",
+      "checks": [
+        {"id": "uncertainty", "critical": true, "requirement": "Names consequential questions or explicit assumptions for delivery, tenant isolation, scale, latency, retention, endpoint security and failure tolerance."},
+        {"id": "semantics", "critical": true, "requirement": "Separates acceptance and delivery, gives retry/idempotency/terminal-failure ownership and avoids unsupported exactly-once effects."},
+        {"id": "sizing", "critical": false, "requirement": "Auditable ranges and unit-bearing estimates, not invented exact load."},
+        {"id": "minimal", "critical": false, "requirement": "Minimal capability architecture with justified scaling thresholds."},
+        {"id": "production", "critical": false, "requirement": "Relevant endpoint abuse, secrets, observability, replay, rollout, rollback and cost drivers."}
+      ]
+    },
+    {
+      "id": "architecture-evidence",
+      "setup": "No production telemetry is provided. The implementation below routes tenants by creation month and performs six mandatory dependency calls concurrently. This is an architecture review, not authorization to change code.",
+      "files": {
+        "service.py": "def route(tenant):\n    return tenant.created_at.strftime('%Y-%m')\n\ndef request(dependencies):\n    futures = [pool.submit(d.call) for d in dependencies]  # six mandatory dependencies\n    return [f.result() for f in futures]\n"
+      },
+      "prompt": "Review this architecture for scale and reliability risks.",
+      "checks": [
+        {"id": "evidence", "critical": true, "requirement": "Exact implementation evidence supports findings; no invented outage/compliance claim."},
+        {"id": "unknown", "critical": false, "requirement": "Missing telemetry is distinct from a proven defect."},
+        {"id": "risks", "critical": false, "requirement": "Concrete triggers/impacts for temporal shard skew and mandatory synchronous dependency budgets."},
+        {"id": "action", "critical": false, "requirement": "Prioritized smallest correction/measurement and preserves sound decisions."}
+      ]
+    },
+    {
+      "id": "monolith-evolution",
+      "setup": "A monolith owns orders and sends email synchronously. The goal is asynchronous fulfillment without downtime; old mobile clients remain active for 90 days. The relational database supports local transactions. No independent service split is required.",
+      "prompt": "Create an implementation-ready migration plan.",
+      "checks": [
+        {"id": "authority", "critical": true, "requirement": "Throughout-migration invariants and source of truth for each phase."},
+        {"id": "publication", "critical": true, "requirement": "Justified atomic publication boundary; no unguarded independent dual writes."},
+        {"id": "compatibility", "critical": false, "requirement": "Compatible expansion/contraction respects 90-day clients and measured usage."},
+        {"id": "gates", "critical": false, "requirement": "Cohorts, observation, abort criteria and reconciliation."},
+        {"id": "rollback", "critical": true, "requirement": "Tested data/contract-compatible rollback, not binaries alone after incompatible writes."}
+      ]
+    },
+    {
+      "id": "wallet-correctness",
+      "setup": "Users retry transfers after timeouts. An external provider emits duplicate and out-of-order webhooks. Balances and transfers are financially material. No compliance regime has been supplied.",
+      "prompt": "Design the payment and wallet state model.",
+      "checks": [
+        {"id": "invariants", "critical": true, "requirement": "Authorization, scoped idempotency, stable identity, exact monetary representation and balanced ledger invariants."},
+        {"id": "ambiguous", "critical": true, "requirement": "Provider timeout remains an ambiguous outcome, not automatically failed."},
+        {"id": "state", "critical": false, "requirement": "Explicit transitions and immutable/auditable postings; no history mutation."},
+        {"id": "provider-events", "critical": false, "requirement": "Duplicate/out-of-order handling and statement reconciliation."},
+        {"id": "recovery", "critical": false, "requirement": "Concurrency, reversals/refunds, audit, security and recovery."}
+      ]
+    },
+    {
+      "id": "location-privacy",
+      "setup": "Five million daily users can opt in to share proximity with friends. Exact coordinates are not required in the UI. No update frequency, retention or visibility-revocation budget has been supplied.",
+      "prompt": "Design nearby-friends updates for five million daily users.",
+      "checks": [
+        {"id": "privacy", "critical": true, "requirement": "Location and relationship authorization are sensitive and revocable; no indefinite exact-coordinate retention without a requirement."},
+        {"id": "bounds", "critical": false, "requirement": "Precision, freshness, retention, revocation propagation and inference risks."},
+        {"id": "shape", "critical": false, "requirement": "Update/fan-out estimates include assumptions, peaks and density/degree skew."},
+        {"id": "options", "critical": false, "requirement": "Compares pull, geocell pub/sub and a reasonable hybrid without universal claims."},
+        {"id": "degraded", "critical": false, "requirement": "Hot cells, reconnect storms, stale presence, battery/network cost and degradation."}
+      ]
+    },
+    {
+      "id": "concise-adr",
+      "setup": "Inputs are durable before thumbnail processing. No detailed latency figures are provided. The team needs one architectural decision; no full product redesign is requested.",
+      "prompt": "Should thumbnail generation be synchronous or queue-backed? Write the decision.",
+      "checks": [
+        {"id": "concise", "critical": true, "requirement": "Concise ADR rather than a full RFC; no unrelated services/infrastructure."},
+        {"id": "drivers", "critical": false, "requirement": "Latency, isolation, completion visibility, retry/idempotency and operating-cost drivers."},
+        {"id": "choice", "critical": false, "requirement": "Chooses under explicit assumptions and records consequences."},
+        {"id": "reconsider", "critical": false, "requirement": "Measurable reconsideration trigger."}
+      ]
+    },
+    {
+      "id": "current-provider",
+      "browsing": true,
+      "setup": "Browsing is available. The team is comparing current AWS SQS FIFO and Azure Service Bus with sessions. Required capabilities: ordered processing per order ID, replay/retry after an outage lasting four days, independent progress across order IDs. No account, region, tier or budget is fixed. Use official documentation for current guarantees and limits.",
+      "prompt": "Compare the current managed options and recommend one for these requirements. Verify decisive details in official documentation; do not rely on remembered limits.",
+      "checks": [
+        {"id": "verified", "critical": true, "requirement": "Actually retrieves current official documentation in the trace and cites decisive pages for retention/ordering, rather than just emitting plausible URLs."},
+        {"id": "calibrated", "critical": false, "requirement": "Separates documented guarantees, inference and unknown account/region/tier conditions."},
+        {"id": "capabilities", "critical": false, "requirement": "Required semantics before price/popularity; broker ordering does not establish exactly-once external processing."},
+        {"id": "conditional", "critical": false, "requirement": "Conditional recommendation and reconsideration trigger, no universal superiority or unsupported exact limits."}
+      ]
+    },
+    {
+      "id": "interview-retrospective",
+      "setup": "A 45-minute search-autocomplete practice exercise has just ended. Candidate reasoning: scoped public English prefixes and 100 ms p95; estimated 20k peak queries/s using daily users/actions and a peak factor; proposed an offline-built trie with hourly updates and a cache; traced queries to top-10 prefixes; acknowledged hot prefixes but did not cover unsafe suggestions, deletions or fallback during rebuild. The candidate explained a simple baseline before considering personalization. This single-turn adaptation evaluates the retrospective and next exercise, not a live 45-minute dialogue.",
+      "prompt": "Grade my approach, identify one strength and the highest-impact gap, and outline the next 45-minute practice session without revealing its full target answer.",
+      "checks": [
+        {"id": "reasoning", "critical": true, "requirement": "Grades actual candidate reasoning, invariants and trade-offs rather than technology-name count."},
+        {"id": "structure", "critical": false, "requirement": "Next exercise has a time-boxed frame/estimate/high-level/deep-dive/failure/close flow."},
+        {"id": "proportional", "critical": false, "requirement": "Distinguishes interview simplifications from production requirements."},
+        {"id": "feedback", "critical": false, "requirement": "One concrete strength, highest-impact missed decision and next practice target."},
+        {"id": "no-spoiler", "critical": true, "requirement": "Does not reveal the entire next target answer before the candidate reasons."}
+      ]
+    }
+  ]
+}

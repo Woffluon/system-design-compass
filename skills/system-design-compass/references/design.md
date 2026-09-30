@@ -1,6 +1,6 @@
 # Design workflow
 
-Use this mode for a new system, a major redesign, or a request whose architecture has not been established.
+> Use this mode for a new system, a major redesign, or a request whose architecture has not been established.
 
 ## Establish the decision frame
 
@@ -28,7 +28,7 @@ Prioritize rather than merely list them. Translate words such as "fast," "reliab
 
 ### 3. Estimate the shape of demand
 
-Estimate peak read/write/event rates, concurrency, object or message size, retention, storage growth, bandwidth, and background amplification. Use ranges when the inputs are uncertain. Calculate only figures that can influence a decision.
+Estimate peak read/write/event rates, concurrency, object or message size, retention, storage growth, bandwidth, and background amplification. Use ranges when the inputs are uncertain. **Calculate only figures that can influence a decision.**
 
 ### 4. Define contracts and invariants
 

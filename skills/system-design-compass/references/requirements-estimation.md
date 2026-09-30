@@ -1,6 +1,6 @@
 # Requirements and estimation
 
-Use this reference when requirements are vague, quality attributes drive architecture, or scale must be quantified.
+> Use this reference when requirements are vague, quality attributes drive architecture, or scale must be quantified.
 
 ## Turn goals into requirements
 
@@ -48,8 +48,10 @@ Do not choose an SLO from habit or current performance. Tie it to user harm, bus
 
 Set recovery targets for stateful or critical systems:
 
-- **RTO:** maximum acceptable time to restore the capability.
-- **RPO:** maximum acceptable interval of data loss measured from the disruption.
+| Recovery objective | Definition |
+|---|---|
+| **RTO** | maximum acceptable time to restore the capability. |
+| **RPO** | maximum acceptable interval of data loss measured from the disruption. |
 
 Define which failure scope they apply to: process, node, zone, region, provider, corruption, or operator error.
 

@@ -43,9 +43,9 @@ def check_skill_entrypoint(errors: list[str]) -> None:
         errors.append(f"SKILL.md has {len(lines)} lines; maximum is 300")
 
     word_count = len(re.findall(r"\S+", text))
-    if word_count > 2_200:
+    if word_count > 500:
         errors.append(
-            f"SKILL.md has {word_count} words; context-friendly maximum is 2200"
+            f"SKILL.md has {word_count} words; entrypoint maximum is 500"
         )
 
     if not text.startswith("---\n"):

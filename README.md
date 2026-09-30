@@ -1,20 +1,69 @@
 # System Design Compass
 
-[![Agent Skills](https://img.shields.io/badge/Agent%20Skills-compatible-111827)](https://agentskills.io)
-[![Install with skills](https://img.shields.io/badge/install-npx%20skills%20add-0ea5e9)](https://skills.sh)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+### Architecture decisions that survive the failure path.
 
-System Design Compass is a vendor-neutral Agent Skill for designing, reviewing, and evolving production software systems. It turns vague architecture requests into explicit requirements, auditable estimates, reasoned decisions, failure-aware designs, and safe rollout plans.
+![A precision compass on a navy architectural map, with a copper route connecting the chosen system boundaries.](assets/system-design-compass-hero.png)
 
-The skill is production-first. It also includes a compact, time-boxed system design interview mode.
+[![Agent Skills](https://img.shields.io/badge/Agent_Skills-compatible-172b3a)](https://agentskills.io)
+[![Status](https://img.shields.io/badge/status-research_preview-c47a3b)](evals/results/2026-09-30.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-172b3a)](LICENSE)
 
-## Install
+Give your coding agent a better way to reason about **system design, architecture reviews and safe migrations**. Start with the decision, find the invariant, challenge the failure path, and collect the evidence that separates credible options.
 
-Install interactively into any agent detected by the [`skills` CLI](https://github.com/vercel-labs/skills):
+**Small entrypoint. Guidance on demand. No runtime dependencies.**
+
+[Get started](#get-started) · [See the decision lens](#a-better-question-changes-the-design) · [Browse the guides](#find-the-right-guide) · [Read the evidence](#measured-results-and-current-limits)
+
+> **Research preview · `1.1.0-rc.1`**
+>
+> The complete two-model acceptance gate is still open. Tested improvements, excluded runs and remaining failures are published—not hidden behind a benchmark badge.
+
+## A better question changes the design
+
+Architecture advice becomes useful when it explains **where a guarantee is enforced** and **what would disprove it**.
+
+| Familiar advice | The decision worth resolving |
+|---|---|
+| “Add idempotency.” | What identifies the operation, where are effect and result committed, and what happens after a crash? |
+| “Use a queue.” | Does completion capacity exceed retry-amplified demand after worker loss, and who acts when age rises? |
+| “Roll back the deployment.” | Can old code still read new data, and which external effects are irreversible? |
+| “Shard for scale.” | Which measured bottleneck requires it, and does the key distribute real traffic? |
+| “Modernize the architecture.” | What is actually broken—and which sound decisions should remain? |
+
+Three useful reminders to take into a design review:
+
+> A timeout is an unknown outcome.
+>
+> Queue storage is not recovery capacity.
+>
+> Restoring old binaries does not undo incompatible writes.
+
+These are prompts for investigation, not substitutes for evidence.
+
+## Get started
+
+Install from the repository with the [`skills` CLI](https://github.com/vercel-labs/skills):
 
 ```bash
 npx skills add Woffluon/system-design-compass
 ```
+
+From a local checkout, run this at the repository root:
+
+```bash
+npx skills add .
+```
+
+Invoke the skill explicitly when your agent supports named skills:
+
+```text
+$system-design-compass Review this service's retry and timeout boundaries.
+Use repository evidence. Preserve sound decisions. Give the smallest
+correction and one experiment that could falsify the recommendation.
+```
+
+<details>
+<summary><strong>Global installation and selected agents</strong></summary>
 
 Install globally:
 
@@ -22,7 +71,7 @@ Install globally:
 npx skills add Woffluon/system-design-compass --global
 ```
 
-Install non-interactively into selected agents:
+Select agents without an interactive prompt:
 
 ```bash
 npx skills add Woffluon/system-design-compass \
@@ -31,92 +80,96 @@ npx skills add Woffluon/system-design-compass \
   --global --yes
 ```
 
-Before the GitHub repository is published, install from a local checkout:
+The CLI handles each agent's installation path. Available tools and automatic skill selection depend on the harness.
 
-```bash
-npx skills add ./system-design-compass
-```
+</details>
 
-## Use
+## Bring a decision, not a technology shopping list
 
-Invoke it explicitly when the harness supports named skills:
+| Work | Example request | Useful result |
+|---|---|---|
+| **Design** | “Design delivery semantics for customer webhook endpoints.” | Ownership, contracts, credible options and explicit failure guarantees. |
+| **Review** | “Assess this architecture's tail-latency and retry risks.” | Evidence, trigger, impact, smallest correction and validation. |
+| **Evolve** | “Move this database while writers and old clients remain active.” | Phase authority, convergence evidence and rollback boundaries. |
+| **Decide narrowly** | “Write an ADR for asynchronous thumbnail rendering.” | One scoped decision; no mandatory full RFC. |
+| **Practice** | “Run a 45-minute system design interview for autocomplete.” | Focused reasoning, deep dives and concrete feedback. |
 
-```text
-$system-design-compass design a multi-tenant webhook delivery platform.
-$system-design-compass review this repository's architecture for reliability risks.
-$system-design-compass plan a zero-downtime migration from the current database.
-```
+Supply the artifacts you have: code, schemas, configuration, SLOs, incident records or existing ADRs. Unknowns should remain visible. The response follows your language; the maintained guidance is English.
 
-Natural-language activation also works in harnesses that discover skills automatically:
+Natural-language requests can activate the skill in harnesses that discover skills automatically. Automatic activation has not been established by the current evaluation.
 
-```text
-Write an ADR comparing queue-backed and synchronous processing for this workflow.
-Review this service's data ownership, failure modes, and scaling limits.
-Run a 45-minute system design interview for a nearby-friends product.
-```
+## Find the right guide
 
-## What it covers
+The [entrypoint](skills/system-design-compass/SKILL.md) routes by the decision at hand. A narrow question can be answered directly; broader work loads the relevant mode, then only the references needed to resolve it.
 
-- Greenfield and redesign workflows, architecture reviews, and evolutionary migrations.
-- Functional requirements, quality attributes, SLI/SLO selection, and capacity estimation.
-- APIs, events, schemas, data ownership, consistency, idempotency, and lifecycle decisions.
-- Partitioning, replication, caching, messaging, concurrency, and coordination trade-offs.
-- Reliability, recovery, observability, security, privacy, abuse resistance, cost, and sustainability.
-- Adaptive RFC, ADR, review, migration-plan, and Mermaid/C4-style diagram output.
-- Compact workload archetypes spanning all 28 topics in the inspiration repository.
+| Decision area | Read when |
+|---|---|
+| [Design](skills/system-design-compass/references/design.md) · [Review](skills/system-design-compass/references/review.md) · [Evolution](skills/system-design-compass/references/evolve.md) | The task needs a broader workflow. |
+| [Requirements and estimation](skills/system-design-compass/references/requirements-estimation.md) | SLOs, demand, units or capacity change the choice. |
+| [Interfaces and data](skills/system-design-compass/references/interfaces-data.md) | Ownership, identity, contracts or consistency need definition. |
+| [Distributed systems](skills/system-design-compass/references/distributed-systems.md) | Queues, leases, replication, placement or overload affect guarantees. |
+| [Production readiness](skills/system-design-compass/references/production-readiness.md) | Recovery, security, observability, cost or launch evidence matters. |
+| [Decision validation](skills/system-design-compass/references/decision-validation.md) | A plausible mechanism lacks a falsifiable experiment or owned repair. |
+| [Deliverables and diagrams](skills/system-design-compass/references/deliverables-diagrams.md) | The requested audience needs an ADR, RFC, phase plan or diagram. |
+| [Interview](skills/system-design-compass/references/interview.md) | Interview practice is explicitly requested. |
 
-The archetypes are decision prompts, not copy-paste reference architectures. Product recommendations are based on capabilities first; current vendor details must be checked against official documentation.
+**28 workload topics**, organized into four selective catalogs:
 
-## Compatibility
+| Catalog | Examples |
+|---|---|
+| [Foundations and platform](skills/system-design-compass/references/archetypes-foundations-platform.md) | Scaling, estimation, rate limiting, hashing, key-value stores, IDs. |
+| [User-facing and realtime](skills/system-design-compass/references/archetypes-user-facing-realtime.md) | Feeds, chat, autocomplete, video, file sync, maps, proximity. |
+| [Data and infrastructure](skills/system-design-compass/references/archetypes-data-infrastructure.md) | Queues, metrics, aggregation, email, object storage. |
+| [Transactional and financial](skills/system-design-compass/references/archetypes-transactional-financial.md) | Reservations, leaderboards, payments, wallets, matching. |
 
-The packaged skill follows the open [Agent Skills specification](https://agentskills.io/specification) and has no runtime scripts, MCP requirements, shell assumptions, or vendor-specific frontmatter. It is intended to work with every standards-compatible harness.
+Catalogs expose questions and failure cases; they are not prebuilt architectures or a prescribed vendor stack.
 
-The installation path is delegated to the current `skills` CLI, which supports Claude Code, Codex, Cursor, GitHub Copilot, Gemini CLI, Windsurf, Cline, Roo Code, OpenCode, Kiro, Amp, Goose, OpenHands, and many other agents. Compatibility means the harness can discover and load Agent Skills; tool availability still varies by harness.
+## Measured results and current limits
 
-## Repository layout
+The [2026-09-30 evaluation](evals/results/2026-09-30.md) tested `gpt-5.6-sol` and `gpt-5.6-luna` at medium reasoning using authored cases and frozen snapshots.
 
-```text
-skills/system-design-compass/
-├── SKILL.md
-├── agents/openai.yaml
-└── references/
-evals/cases.md
-tools/validate_repo.py
-```
+| Observation | What the evidence supports |
+|---|---|
+| **594 → 448 entrypoint words** | The evaluated candidate's entrypoint was 24.6% smaller. |
+| **Repeated queue-recovery correction** | The strong model added actionable recovery validation; two clean confirmations preserved the result. |
+| **3,372 → 448 read words in a narrow ADR** | The strong model's observed skill-read proxy fell 86.7% in this paired case. This is not a token or universal savings claim. |
+| **Acceptance remains open** | Smaller-model coverage is incomplete; provider verification and narrow-ADR completeness still have failures. |
 
-The entrypoint routes to focused references so an agent does not load the entire knowledge base for every request.
+The evaluation recorded 138 attempts plus nine earlier preflights. Thirty-six protocol failures and 16 contaminated subjects were excluded. Raw trace proxies, real CLI token totals, blinded grades and conservative artifact reviews are reported separately.
 
-## Development
+Subsequent documentation formatting does not constitute a new behavioral evaluation. Historical scores and hashes refer to the evaluated snapshots.
 
-Run the repository checks:
+## Portable by construction
+
+The distributed folder follows the [Agent Skills specification](https://agentskills.io/specification): Markdown references and optional agent UI metadata, with **no runtime scripts, MCP requirements, credentials or network dependency**. Standards-compatible harnesses can load it; tools and permission enforcement remain the harness's responsibility.
+
+Repository evaluation utilities are development tooling, not part of the skill's runtime. The cover image is also outside the distributable folder.
+
+## Contribute a failure worth catching
+
+A useful contribution starts with an anonymized prompt, raw evidence, a consequential failure and a verifiable outcome. If this helps surface a problem before production, share the decision and the smallest reproducible case.
+
+Read [Contributing](CONTRIBUTING.md) for content rules and checks, [Security](SECURITY.md) for private reporting, or the [evaluation protocol](evals/README.md) to reproduce a comparison. The original [behavioral cases](evals/cases.md) describe the release expectations.
+
+<details>
+<summary><strong>Development checks</strong></summary>
 
 ```bash
 python tools/validate_repo.py
-python C:/Users/Efe/.codex/skills/.system/skill-creator/scripts/quick_validate.py \
-  skills/system-design-compass
+python -m unittest discover -s tools -p 'test_*.py'
+python -m pip install skills-ref==0.1.1
+agentskills validate skills/system-design-compass
 npx skills@1.5.26 add . --list
 ```
 
-The second command is a Codex maintainer check and is not required for contributors. CI validates the open specification independently.
+The specification validator is a development dependency. These checks establish repository and format integrity; behavioral acceptance needs the separate evaluation protocol.
 
-Behavioral evaluation cases and their invariants live in [`evals/cases.md`](evals/cases.md). They intentionally test decisions rather than exact wording.
+</details>
 
-## Sources and clean-room policy
+## Sources and license
 
-The topic map was inspired by [`liquidslr/system-design-notes`](https://github.com/liquidslr/system-design-notes). That repository does not declare a redistribution license and states that its notes are based on commercial books. No prose, diagrams, tables, or images from it are included here.
+The topic map was inspired by [`liquidslr/system-design-notes`](https://github.com/liquidslr/system-design-notes). It does not declare a redistribution license and states its notes draw on commercial books. No prose, diagrams, tables or images from it are included here.
 
-The guidance in this repository is independently written from generally applicable engineering principles and primary sources, including:
+Guidance is independently written from engineering principles and primary sources: [AWS Well-Architected](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html), [Azure Well-Architected](https://learn.microsoft.com/azure/well-architected/), [Google Cloud Well-Architected](https://cloud.google.com/architecture/framework), [Google SRE](https://sre.google/books/), [OWASP threat modeling](https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html) and [C4](https://c4model.com/).
 
-- [Agent Skills specification](https://agentskills.io/specification)
-- [AWS Well-Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html)
-- [Azure Well-Architected Framework](https://learn.microsoft.com/azure/well-architected/)
-- [Google Cloud Well-Architected Framework](https://cloud.google.com/architecture/framework)
-- [Google Site Reliability Engineering](https://sre.google/books/)
-- [OWASP Threat Modeling Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html)
-- [C4 model](https://c4model.com/)
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) before adding sourced material.
-
-## License
-
-Released under the [MIT License](LICENSE). The license applies only to the original contents of this repository.
+Original repository content is [MIT licensed](LICENSE). [Cover provenance and generation prompt](assets/README.md) are recorded alongside the asset.

@@ -4,11 +4,30 @@ These cases evaluate decisions and observable behavior, not exact wording. Run e
 
 Score each required behavior as pass or fail. A case passes when every **critical** behavior and at least 80% of all listed behaviors pass. A release passes when all eight cases pass and no unsafe behavior appears.
 
-## Case 1 — Ambiguous greenfield system
+The runnable single-turn adaptations are in [regression.json](regression.json), with the comparative protocol in [README.md](README.md). The [2026-09-30 results](results/2026-09-30.md) document incomplete coverage and failures; they do not certify a release.
+
+## Scenario index
+
+| Case | Decision under test |
+|---|---|
+| 1 | [Ambiguous greenfield system](#case-1-ambiguous-greenfield-system) |
+| 2 | [Evidence-based architecture review](#case-2-evidence-based-architecture-review) |
+| 3 | [Monolith evolution](#case-3-monolith-evolution) |
+| 4 | [Payment and wallet correctness](#case-4-payment-and-wallet-correctness) |
+| 5 | [Realtime location privacy](#case-5-realtime-location-privacy) |
+| 6 | [Narrow ADR](#case-6-narrow-adr) |
+| 7 | [Current provider comparison](#case-7-current-provider-comparison) |
+| 8 | [Time-boxed interview](#case-8-time-boxed-interview) |
+
+## Case 1: Ambiguous greenfield system
 
 **Setup:** No repository. The requester says the product is important but supplies no scale or criticality.
 
-**Prompt:** `Design a multi-tenant webhook delivery platform.`
+**Prompt**
+
+```text
+Design a multi-tenant webhook delivery platform.
+```
 
 **Required behavior:**
 
@@ -18,13 +37,17 @@ Score each required behavior as pass or fail. A case passes when every **critica
 - Starts with a minimal capability architecture and explains when partitioning or cells become necessary.
 - Covers endpoint abuse, secret handling, observability, replay, rollout, rollback, and cost drivers.
 
-**Unsafe behavior:** claims exactly-once delivery without an atomic boundary; picks vendor products before requirements.
+> **Unsafe behavior:** claims exactly-once delivery without an atomic boundary; picks vendor products before requirements.
 
-## Case 2 — Evidence-based architecture review
+## Case 2: Evidence-based architecture review
 
 **Setup:** Provide a small repository where every tenant is routed by creation month and a single synchronous request fans out to six dependencies. Provide no production telemetry.
 
-**Prompt:** `Review this architecture for scale and reliability risks.`
+**Prompt**
+
+```text
+Review this architecture for scale and reliability risks.
+```
 
 **Required behavior:**
 
@@ -34,13 +57,17 @@ Score each required behavior as pass or fail. A case passes when every **critica
 - Prioritizes findings and recommends the smallest useful correction or experiment.
 - Preserves sound existing decisions instead of proposing a wholesale rewrite.
 
-**Unsafe behavior:** asserts an outage or compliance breach without evidence.
+> **Unsafe behavior:** asserts an outage or compliance breach without evidence.
 
-## Case 3 — Monolith evolution
+## Case 3: Monolith evolution
 
 **Setup:** A monolith owns orders and sends email synchronously. The goal is asynchronous fulfillment without downtime; old mobile clients can remain active for 90 days.
 
-**Prompt:** `Create an implementation-ready migration plan.`
+**Prompt**
+
+```text
+Create an implementation-ready migration plan.
+```
 
 **Required behavior:**
 
@@ -50,13 +77,17 @@ Score each required behavior as pass or fail. A case passes when every **critica
 - Includes cohorting, observation windows, abort thresholds, reconciliation, and tested rollback.
 - Does not remove the old contract before usage and compatibility evidence permit it.
 
-**Unsafe behavior:** proposes unguarded dual writes or calls deployment rollback sufficient after incompatible data writes.
+> **Unsafe behavior:** proposes unguarded dual writes or calls deployment rollback sufficient after incompatible data writes.
 
-## Case 4 — Payment and wallet correctness
+## Case 4: Payment and wallet correctness
 
 **Setup:** A user may retry transfers after timeouts; an external payment provider sends duplicate and out-of-order webhooks.
 
-**Prompt:** `Design the payment and wallet state model.`
+**Prompt**
+
+```text
+Design the payment and wallet state model.
+```
 
 **Required behavior:**
 
@@ -66,13 +97,17 @@ Score each required behavior as pass or fail. A case passes when every **critica
 - Includes duplicate/out-of-order webhook handling and reconciliation to provider statements.
 - Covers concurrency, reversals/refunds, audit, security, and recovery.
 
-**Unsafe behavior:** uses binary floating point for money or mutates historical ledger entries.
+> **Unsafe behavior:** uses binary floating point for money or mutates historical ledger entries.
 
-## Case 5 — Realtime location privacy
+## Case 5: Realtime location privacy
 
 **Setup:** Users can opt in to share proximity with friends. Exact coordinates are not required in the UI.
 
-**Prompt:** `Design nearby-friends updates for five million daily users.`
+**Prompt**
+
+```text
+Design nearby-friends updates for five million daily users.
+```
 
 **Required behavior:**
 
@@ -82,13 +117,17 @@ Score each required behavior as pass or fail. A case passes when every **critica
 - Compares pull, geocell pub/sub, and a reasonable hybrid without pretending there is one universal answer.
 - Covers hot cells, reconnect storms, stale presence, battery/network cost, and degraded behavior.
 
-**Unsafe behavior:** retains exact location indefinitely without a supplied requirement.
+> **Unsafe behavior:** retains exact location indefinitely without a supplied requirement.
 
-## Case 6 — Narrow ADR
+## Case 6: Narrow ADR
 
 **Setup:** A team needs to decide whether thumbnail generation belongs in an upload request or an asynchronous worker. Inputs are already durable before processing.
 
-**Prompt:** `Should thumbnail generation be synchronous or queue-backed? Write the decision.`
+**Prompt**
+
+```text
+Should thumbnail generation be synchronous or queue-backed? Write the decision.
+```
 
 **Required behavior:**
 
@@ -97,13 +136,17 @@ Score each required behavior as pass or fail. A case passes when every **critica
 - Chooses an option under explicit assumptions and records consequences.
 - Gives a measurable reconsideration trigger.
 
-**Unsafe behavior:** adds unrelated microservices or infrastructure.
+> **Unsafe behavior:** adds unrelated microservices or infrastructure.
 
-## Case 7 — Current provider comparison
+## Case 7: Current provider comparison
 
 **Setup:** Browsing is available. The requester names two current managed queue products and asks which supports a specific ordering and retention requirement.
 
-**Prompt:** `Compare the current managed options and recommend one for these requirements.`
+**Prompt**
+
+```text
+Compare the current managed options and recommend one for these requirements.
+```
 
 **Required behavior:**
 
@@ -112,13 +155,17 @@ Score each required behavior as pass or fail. A case passes when every **critica
 - Compares required capabilities and failure semantics before price or popularity.
 - Avoids claiming universal superiority and states a reconsideration trigger.
 
-**Unsafe behavior:** relies on memory, secondary comparison blogs, or uncited exact limits.
+> **Unsafe behavior:** relies on memory, secondary comparison blogs, or uncited exact limits.
 
-## Case 8 — Time-boxed interview
+## Case 8: Time-boxed interview
 
 **Setup:** A 45-minute interview practice session; no real implementation will follow.
 
-**Prompt:** `Run a system design interview for search autocomplete, then grade my approach.`
+**Prompt**
+
+```text
+Run a system design interview for search autocomplete, then grade my approach.
+```
 
 **Required behavior:**
 
@@ -128,7 +175,7 @@ Score each required behavior as pass or fail. A case passes when every **critica
 - Grades reasoning, invariants, trade-offs, and communication rather than technology-name count.
 - Ends with one concrete strength, highest-impact gap, and next practice target.
 
-**Unsafe behavior:** reveals the entire target answer before allowing the candidate to reason.
+> **Unsafe behavior:** reveals the entire target answer before allowing the candidate to reason.
 
 ## Release review
 

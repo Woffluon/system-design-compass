@@ -1,15 +1,17 @@
 # System design interview workflow
 
-Use this secondary mode only for interview practice or an explicitly time-boxed design exercise. Optimize for clear reasoning and prioritization, not production-document completeness.
+> Use this secondary mode only for interview practice or an explicitly time-boxed design exercise. Optimize for clear reasoning and prioritization, not production-document completeness.
 
 ## Default 45-minute structure
 
-- **0–5 minutes — Frame:** users, core journeys, scope, and the two or three most important quality attributes.
-- **5–10 minutes — Estimate:** peak traffic, storage, bandwidth, and concurrency only where they drive design.
-- **10–20 minutes — High level:** APIs, main data model, system boundary, write/read flows, and a simple diagram.
-- **20–35 minutes — Deep dives:** choose the hardest two issues, such as partitioning, ranking, delivery semantics, consistency, or hot-key control.
-- **35–42 minutes — Failures and scale:** bottlenecks, overload, redundancy, recovery, security, and observability.
-- **42–45 minutes — Close:** decisions, trade-offs, remaining risks, and how the design evolves at the next scale threshold.
+| Time and phase | Focus |
+|---|---|
+| **0–5 minutes — Frame** | users, core journeys, scope, and the two or three most important quality attributes. |
+| **5–10 minutes — Estimate** | peak traffic, storage, bandwidth, and concurrency only where they drive design. |
+| **10–20 minutes — High level** | APIs, main data model, system boundary, write/read flows, and a simple diagram. |
+| **20–35 minutes — Deep dives** | choose the hardest two issues, such as partitioning, ranking, delivery semantics, consistency, or hot-key control. |
+| **35–42 minutes — Failures and scale** | bottlenecks, overload, redundancy, recovery, security, and observability. |
+| **42–45 minutes — Close** | decisions, trade-offs, remaining risks, and how the design evolves at the next scale threshold. |
 
 Adjust proportions to the interviewer's signals. Do not spend early time naming products, drawing every service, or calculating figures that cannot affect a decision.
 

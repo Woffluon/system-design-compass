@@ -1,0 +1,120 @@
+{
+  "name": "benchmark",
+  "cases": [
+    {
+      "id": "webhook-effect",
+      "mode": "design",
+      "setup": "A webhook service accepts 200 events/s average and 2000/s for 10 minutes. Events are retained for 7 days. Customers operate endpoints outside our transaction boundary. Some endpoints support stable idempotency keys; others do not. An HTTP timeout can occur after the customer applied the effect. Two workers may overlap after a visibility timeout. No code changes are requested.",
+      "prompt": "Design the smallest credible delivery and retry model. Explain what we can promise for endpoints with and without deduplication, including worker crashes. Keep the answer focused on this decision.",
+      "checks": [
+        {"id": "external-effect", "critical": true, "requirement": "Does not promise exactly-once external effects without endpoint cooperation; names the boundary."},
+        {"id": "stable-identity", "critical": true, "requirement": "Uses stable delivery identity across retries and separates durable acceptance from remote completion."},
+        {"id": "crash-window", "critical": true, "requirement": "Explains a crash after remote success before recording it; local locking or deduplication alone cannot close that window."},
+        {"id": "retry-budget", "critical": false, "requirement": "Bounds retries and concurrency, defines ambiguous and terminal outcomes and an owned repair path."},
+        {"id": "capacity", "critical": false, "requirement": "Accounts for the stated peak duration and duplicate/retry amplification without inventing worker throughput."},
+        {"id": "test", "critical": false, "requirement": "Gives a concrete crash/timeout/overlap test and a customer-visible guarantee."}
+      ]
+    },
+    {
+      "id": "reservation-owner",
+      "mode": "design",
+      "setup": "There is one seat left for an event. A relational database is the authority for inventory. The proposed optimization is a 5-second distributed lease. A holder can pause for 20 seconds, another holder can acquire the expired lease, and the original process can resume. Payment may succeed after a seat hold expires. Clients retry the same booking request after timeouts.",
+      "prompt": "Decide whether the lease is sufficient and design the minimal booking/hold/confirmation boundary. Include the payment-late case. Do not expand this into a full ticketing platform.",
+      "checks": [
+        {"id": "stale-owner", "critical": true, "requirement": "Shows how the resumed expired holder can violate the invariant; a lease or longer timeout alone is insufficient."},
+        {"id": "storage-enforcement", "critical": true, "requirement": "Enforces allocation at the authoritative storage boundary with an atomic conditional transition, transaction, or validated fencing token."},
+        {"id": "late-payment", "critical": true, "requirement": "Late payment does not silently revive an expired hold or steal an already allocated seat; describes reconciliation/compensation."},
+        {"id": "identity", "critical": false, "requirement": "Retry identity and stored booking outcome survive process failure and conflicting request payloads are handled."},
+        {"id": "expiry-race", "critical": false, "requirement": "Confirmation and expiry compete through an authoritative state transition, not separate unchecked operations."},
+        {"id": "test", "critical": false, "requirement": "Specifies a paused-holder/concurrent last-seat test that checks allocation, not just lock acquisition."}
+      ]
+    },
+    {
+      "id": "retry-review",
+      "mode": "review",
+      "setup": "A team reports high tail latency but supplies no production traces. The following small service is the only implementation evidence. All six dependencies are mandatory and sequential. Each call has a 2-second timeout and three attempts. The edge retries the complete request twice. New tenants all arrive this month. No modifications are requested.",
+      "files": {
+        "service.py": "def shard(tenant):\n    return tenant.created_at.strftime('%Y-%m')\n\ndef serve(request):\n    results = []\n    for dependency in request.dependencies:  # six mandatory services\n        for attempt in range(3):\n            try:\n                results.append(dependency.call(timeout=2))\n                break\n            except TimeoutError:\n                if attempt == 2:\n                    raise\n    return results\n",
+        "edge.yaml": "request_attempts: 2\nrequest_deadline_seconds: 3\n"
+      },
+      "prompt": "Review the architecture for reliability and scale risks. Cite exact file/line evidence. Distinguish a proven mechanism from a hypothesis about the observed latency; prioritize the smallest useful correction or measurement.",
+      "checks": [
+        {"id": "evidence", "critical": true, "requirement": "Cites actual file/line evidence; does not invent outages or telemetry."},
+        {"id": "budget", "critical": true, "requirement": "Identifies sequential timeout/retry budgets exceeding the 3-second request deadline and propagated cancellation requirements."},
+        {"id": "amplification", "critical": false, "requirement": "Explains layered retry amplification with the actual six-service sequential flow rather than inventing fan-out."},
+        {"id": "hotspot", "critical": false, "requirement": "Explains creation-month placement concentrating new tenants, with a concrete trigger."},
+        {"id": "calibration", "critical": false, "requirement": "Separates code-backed risks from an unproven root cause of production latency."},
+        {"id": "minimal", "critical": false, "requirement": "Recommends deadline propagation, a retry owner, distribution evidence or another bounded correction instead of a wholesale rewrite."}
+      ]
+    },
+    {
+      "id": "queue-recovery",
+      "mode": "review",
+      "setup": "A durable job queue receives 100 jobs/s normally and 300/s during a 10-minute burst. Four workers each complete 40 jobs/s at the current payload distribution. One worker is unavailable during the burst. An attempt fails transiently with probability 0.2, independent of prior attempts, and failed attempts re-enter the same workers immediately with no cap. Each attempt consumes the same capacity. Operators propose increasing queue storage and using queue depth as the only alarm. No measurements beyond these inputs are available.",
+      "prompt": "Assess whether this queue can recover and what the smallest operational changes should be. Show the relevant arithmetic and assumptions, including the retry workload and failure capacity. Do not invent a cloud price or autoscaler speed.",
+      "checks": [
+        {"id": "attempt-load", "critical": true, "requirement": "Separates completed jobs from attempts; under the supplied independence model expected attempts/job is 1/(1-0.2)=1.25."},
+        {"id": "drain", "critical": true, "requirement": "Recognizes that with one worker down, 120 attempts/s cannot serve normal demand of 125 attempts/s; increasing queue storage does not establish recovery."},
+        {"id": "burst", "critical": false, "requirement": "Quantifies burst backlog with clearly labelled attempt/job units and states assumptions about outstanding retries."},
+        {"id": "policy", "critical": false, "requirement": "Bounds retries/admission or supplies a justified capacity threshold rather than relying on unbounded buffering."},
+        {"id": "age", "critical": false, "requirement": "Uses oldest-job age/completion deadline alongside depth and defines operator action."},
+        {"id": "validation", "critical": false, "requirement": "Proposes an experiment with burst, worker loss and recovery; checks sustained completion and headroom."}
+      ]
+    },
+    {
+      "id": "backfill-convergence",
+      "mode": "evolve",
+      "setup": "An old relational store remains writable while a new store is backfilled. Each source entity has a monotonic version, including deletion tombstones. CDC is at-least-once and can arrive out of order. A backfill scan can read version 4 and deliver it after CDC delivered version 5. Deletes can occur before the scan reaches the row. Writers cannot be paused for the entire copy. The team proposes a cutover once row counts match.",
+      "prompt": "Plan the minimum safe copy, convergence and cutover. Explain how updates and deletes racing the scan are handled and what evidence permits cutover. State source of truth and rollback boundaries for each phase.",
+      "checks": [
+        {"id": "version-order", "critical": true, "requirement": "Delayed version-4 backfill cannot overwrite version 5; version comparisons are enforced at target apply boundary."},
+        {"id": "deletes", "critical": true, "requirement": "Preserves deletion identity/version and prevents resurrection by old backfill or CDC; does not rely only on scanning live rows."},
+        {"id": "capture-boundary", "critical": true, "requirement": "Establishes a snapshot/capture boundary and a proven catch-up barrier, including in-flight writes, before source ownership changes."},
+        {"id": "reconciliation", "critical": false, "requirement": "Counts alone are insufficient; compares entity versions/content or business invariants and provides repair."},
+        {"id": "ownership", "critical": false, "requirement": "Names authority during copy/cutover and explains post-cutover write compatibility for rollback."},
+        {"id": "test", "critical": false, "requirement": "Tests late old backfill, delete-before-scan, duplicate/out-of-order CDC and restart."}
+      ]
+    },
+    {
+      "id": "rollback-contract",
+      "mode": "evolve",
+      "setup": "v1 order clients remain active for 90 days. v1 understands only pending and completed states. v2 adds split fulfillment: multiple shipment rows and partially_completed. v1 servers cannot read this representation. Deployment rollback restores v1 binaries only. The team wants a canary now and to drop the old fields after 7 days. A completed shipment cannot physically be undone.",
+      "prompt": "Produce a safe phased transition and a rollback decision. Explain when code rollback ceases to be sufficient and how old clients remain supported. Keep the plan specific to these contract and data changes.",
+      "checks": [
+        {"id": "old-clients", "critical": true, "requirement": "Keeps a compatible v1 representation/adapter for the actual 90-day supported-client window; rejects day-7 contraction."},
+        {"id": "data-rollback", "critical": true, "requirement": "v1 binary rollback is unsafe once v2-only data exists unless compatible storage/translation has been tested."},
+        {"id": "irreversible", "critical": true, "requirement": "Does not equate physical shipment reversal with deployment rollback; defines forward repair/compensation and decision boundary."},
+        {"id": "phases", "critical": false, "requirement": "Explicit source of truth, compatible expansion, cohort/observation and exit evidence per phase."},
+        {"id": "abort", "critical": false, "requirement": "Provides observable abort criteria and tests mixed-version reads/writes."},
+        {"id": "contract", "critical": false, "requirement": "Removal is gated on measured unsupported usage/retention obligations, not a calendar alone."}
+      ]
+    },
+    {
+      "id": "narrow-adr",
+      "mode": "control",
+      "setup": "Original uploads are durable before thumbnail generation. Rendering takes 4 seconds p95; the upload acknowledgement target is 300 ms. A thumbnail may appear within 30 seconds. The team has one existing durable job queue and workers. Duplicate rendering is harmless if the asset version and rendering profile identify the output.",
+      "prompt": "Write a short ADR deciding whether thumbnail rendering belongs inside the upload request or in the existing worker. Include consequences and one reconsideration trigger. Do not design the rest of the product.",
+      "checks": [
+        {"id": "scope", "critical": true, "requirement": "A concise ADR focused on one choice, not a full RFC or unrelated infrastructure."},
+        {"id": "choice", "critical": true, "requirement": "Chooses the existing worker under the given latency/freshness constraints and explains durable scheduling."},
+        {"id": "completion", "critical": false, "requirement": "Distinguishes upload acceptance from thumbnail readiness and explains retries/output identity."},
+        {"id": "trigger", "critical": false, "requirement": "Includes a measurable reconsideration trigger connected to the supplied requirements."}
+      ]
+    },
+    {
+      "id": "sound-system",
+      "mode": "control",
+      "setup": "A single-region internal inventory tool serves 20 requests/s. One relational database owns inventory. A unique tenant/operation constraint, matching request hash and stored result share the transaction with an atomic inventory decrement. Read replicas are not used for allocation. Tests race the last item and repeat a committed operation after a response is lost. Backups have a measured 20-minute restore, within the 60-minute RTO; RPO is 5 minutes, within the agreed 15 minutes. No growth pressure or region-loss requirement is supplied.",
+      "files": {
+        "inventory.sql": "BEGIN;\nINSERT INTO operations(tenant_id, operation_id, request_hash) VALUES (:tenant, :op, :hash); -- UNIQUE(tenant_id, operation_id)\nUPDATE inventory SET remaining = remaining - 1 WHERE tenant_id = :tenant AND sku = :sku AND remaining > 0;\n-- Require exactly one updated row; otherwise roll back and report unavailable.\nUPDATE operations SET result = :result WHERE tenant_id = :tenant AND operation_id = :op;\nCOMMIT;\n-- On unique conflict, roll back, read committed operation, compare request_hash, return stored result.\n"
+      },
+      "prompt": "Is an architectural change justified? Give a brief evidence-based assessment. Missing evidence should be identified as an unknown rather than treated as a defect.",
+      "checks": [
+        {"id": "no-invented-defect", "critical": true, "requirement": "Does not manufacture a demonstrated correctness defect contrary to the supplied transaction and tests."},
+        {"id": "preserve", "critical": true, "requirement": "Preserves the simple architecture; does not demand microservices, consensus, multi-region or a cache without a requirement."},
+        {"id": "evidence", "critical": false, "requirement": "Explains the actual transaction/idempotency and recovery evidence, rather than blanket approval."},
+        {"id": "unknowns", "critical": false, "requirement": "Any additional concerns are qualified as unknowns with proportionate validation."}
+      ]
+    }
+  ]
+}

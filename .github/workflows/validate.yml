@@ -25,6 +25,9 @@ jobs:
       - name: Validate repository invariants
         run: python tools/validate_repo.py
 
+      - name: Test evaluation accounting and grading
+        run: python -m unittest discover -s tools -p 'test_*.py'
+
       - name: Validate Agent Skills specification
         run: |
           python -m pip install --disable-pip-version-check skills-ref==0.1.1

@@ -1,6 +1,6 @@
 # Distributed systems patterns
 
-Use this reference when state crosses processes, machines, zones, or regions. Choose mechanisms from required semantics and failure behavior rather than popularity.
+> Use this reference when state crosses processes, machines, zones, or regions. Choose mechanisms from required semantics and failure behavior rather than popularity.
 
 ## Partitioning and placement
 
@@ -17,7 +17,7 @@ Analyze skew by tenant, celebrity entity, time bucket, geography, and workload t
 
 State the replication purpose: availability, durability, read locality, disaster recovery, analytics, or migration. Identify synchronous acknowledgement scope, leader or quorum behavior, lag visibility, failover authority, split-brain prevention, and repair.
 
-Quorum counts alone do not guarantee desired semantics; topology, versioning, read repair, failure detection, and membership changes matter. For multi-region designs, make the latency/consistency trade-off per operation. Keep irreversible or financially material writes on a clearly owned serialization path unless the business explicitly accepts conflict resolution.
+**Quorum counts alone do not guarantee desired semantics;** topology, versioning, read repair, failure detection, and membership changes matter. For multi-region designs, make the latency/consistency trade-off per operation. Keep irreversible or financially material writes on a clearly owned serialization path unless the business explicitly accepts conflict resolution.
 
 ## Caching
 
@@ -36,9 +36,11 @@ Define the producer acknowledgement point, durability, partitioning, ordering sc
 
 At-least-once delivery is common: make consumer effects idempotent or deduplicated at the same durable boundary as the effect. Use an outbox or log-coupled change capture when state mutation and event publication must not diverge. An inbox/deduplication record needs a scope and retention horizon.
 
-Retries require a budget. Use exponential delay and jitter for transient failure, cap attempts or elapsed time, and route terminal failures to a visible repair workflow. A dead-letter queue without ownership, alerts, replay safety, and retention is only hidden backlog.
+Retries require a budget. Use exponential delay and jitter for transient failure, cap attempts or elapsed time, and route terminal failures to a visible repair workflow. **A dead-letter queue without ownership, alerts, replay safety, and retention is only hidden backlog.**
 
 Monitor queue age and oldest-item latency, not only depth. Bound producer admission or shed optional work when consumption cannot catch up.
+
+When recovery or validation remains unspecified, use [decision validation](decision-validation.md) to turn delivery and queue claims into fault experiments and operator actions.
 
 For windowed aggregation define event time versus processing time, allowed lateness, watermark policy, corrections/retractions, and replay determinism. Reconciliation is part of correctness when late or duplicated events are possible.
 

@@ -1,6 +1,6 @@
 # Deliverables and diagrams
 
-Use the smallest artifact that records the decision and enables its next audience. Preserve requested formats when the user provides one.
+> Use the smallest artifact that records the decision and enables its next audience. Preserve requested formats when the user provides one.
 
 ## Full architecture document or RFC
 
@@ -97,6 +97,6 @@ flowchart LR
     Worker -->|side effect| Provider[External provider]
 ```
 
-If the target cannot render Mermaid, provide an equivalent ordered flow or compact ASCII diagram. A diagram never substitutes for consistency, failure, or ownership semantics.
+If the target cannot render Mermaid, provide an equivalent ordered flow or compact ASCII diagram. **A diagram never substitutes for consistency, failure, or ownership semantics.**
 
 This diagram guidance follows the notation-independent intent of the [C4 model](https://c4model.com/diagrams) without requiring a C4-specific tool.

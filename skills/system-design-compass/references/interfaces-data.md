@@ -1,6 +1,6 @@
 # Interfaces and data
 
-Use this reference to define system contracts, state ownership, correctness boundaries, and schema evolution.
+> Use this reference to define system contracts, state ownership, correctness boundaries, and schema evolution.
 
 ## Start from business invariants
 
@@ -71,7 +71,7 @@ Choose keys with distribution and lifecycle in mind:
 
 For each read-after-write, uniqueness, ordering, and aggregation path state the required model: strong, monotonic, bounded stale, causal where available, or eventual. Describe client behavior during lag or conflict.
 
-When using optimistic concurrency, define the version checked and the retry/merge policy. When using locks or leases, define ownership, expiry, fencing, and recovery after pauses. Timeouts alone do not prove that a remote operation failed.
+When using optimistic concurrency, define the version checked and the retry/merge policy. When using locks or leases, define ownership, expiry, fencing, and recovery after pauses. **Timeouts alone do not prove that a remote operation failed.**
 
 ## Design the data lifecycle
 
@@ -81,4 +81,4 @@ Schema changes should normally expand compatibility first, migrate producers/con
 
 ## Validate contracts
 
-Use contract tests, concurrency tests around invariants, replay and duplicate tests for consumers, migration tests across mixed versions, property checks for conservation/uniqueness, and restore/reconciliation exercises. A schema-valid message can still violate a business invariant; test both.
+Use contract tests, concurrency tests around invariants, replay and duplicate tests for consumers, migration tests across mixed versions, property checks for conservation/uniqueness, and restore/reconciliation exercises. **A schema-valid message can still violate a business invariant;** test both.
