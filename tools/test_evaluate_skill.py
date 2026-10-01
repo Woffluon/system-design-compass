@@ -13,6 +13,41 @@ import evaluate_skill as evaluation
 
 
 class EvaluationTests(unittest.TestCase):
+    def test_host_disablements_are_local_configuration_not_file_mutations(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            skill = root / ".agents/skills/example/SKILL.md"
+            skill.parent.mkdir(parents=True)
+            skill.write_text("Unchanged", encoding="utf-8")
+            with patch.object(evaluation.Path, "home", return_value=root):
+                self.assertEqual(evaluation.disabled_host_skills(),
+                                 [{"path": skill.as_posix(), "enabled": False}])
+            self.assertEqual(skill.read_text(), "Unchanged")
+
+    def test_blind_packet_retains_successful_http_evidence_only(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            runs = root / "runs"
+            evaluation.write_json(runs / "one.json", {"status": "completed", "run_id": "private", "suite": "test", "case": "one", "answer": "Decision"})
+            items = [{"type": "command_execution", "command": "curl https://official.example/page", "exit_code": code, "aggregated_output": text}
+                     for code, text in [(0, "Documented retention"), (1, "Failed"), (0, "")]]
+            (runs / "private.jsonl").write_text("\n".join(json.dumps({"type": "item.completed", "item": item}) for item in items))
+            evaluation.blind(runs, root / "packet.json", root / "key.json")
+            trace = evaluation.read_json(root / "packet.json")[0]["verification_trace"]
+            self.assertEqual(len(trace), 1)
+            self.assertEqual(trace[0]["aggregated_output"], "Documented retention")
+
+    def test_truncated_http_command_retains_page_body_for_grader(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            runs = root / "runs"
+            evaluation.write_json(runs / "one.json", {"status": "completed", "run_id": "private", "suite": "test", "case": "one", "answer": "Decision"})
+            item = {"type": "command_execution", "command": "python -c import urllib.request; ...",
+                    "exit_code": 0, "aggregated_output": "https://official.example/quotas\nMessage retention: 14 days"}
+            (runs / "private.jsonl").write_text(json.dumps({"type": "item.completed", "item": item}))
+            evaluation.blind(runs, root / "packet.json", root / "key.json")
+            self.assertEqual(evaluation.read_json(root / "packet.json")[0]["verification_trace"], [item])
+
     def test_fixture_paths_cannot_escape_or_configure_the_harness(self):
         with tempfile.TemporaryDirectory() as folder:
             for name in ("../outside.txt", ".codex/config.toml", ".agents/skills/x/SKILL.md", "AGENTS.md", "skill/override.txt"):
@@ -42,6 +77,25 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(result["observed_skill_reads"], [])
         self.assertIsNone(result["usage"])
         self.assertFalse(result["completed"])
+
+    def test_empty_conditional_read_does_not_count_as_skill_loading(self):
+        result = evaluation.metrics([{"type": "item.completed", "item": {
+            "type": "command_execution", "command": "if (Test-Path skill/SKILL.md) { Get-Content skill/SKILL.md }",
+            "exit_code": 0, "aggregated_output": ""}}])
+        self.assertEqual(result["observed_skill_reads"], [])
+
+    def test_discovery_glob_does_not_count_as_content_loading(self):
+        result = evaluation.metrics([{"type": "item.completed", "item": {
+            "type": "command_execution", "command": "Get-ChildItem; rg --files -g 'skill/SKILL.md' -g '*.py'",
+            "exit_code": 0, "aggregated_output": "service.py\n"}}])
+        self.assertEqual(result["observed_skill_reads"], [])
+        self.assertEqual(result["observed_skill_read_output_words"], 0)
+
+    def test_discovery_followed_by_content_read_still_counts(self):
+        result = evaluation.metrics([{"type": "item.completed", "item": {
+            "type": "command_execution", "command": "Get-ChildItem; Get-Content skill/SKILL.md",
+            "exit_code": 0, "aggregated_output": "Actual guidance"}}])
+        self.assertEqual(result["observed_skill_reads"], ["SKILL.md"])
 
     def test_escaped_windows_paths_are_counted_and_other_skills_detected(self):
         result = evaluation.metrics([{"type": "item.completed", "item": {"type": "command_execution", "command": r"Get-Content skill\\references\\evolve.md C:\\Users\\someone\\.agents\\skills\\other\\SKILL.md", "exit_code": 0, "aggregated_output": "Guidance"}}])

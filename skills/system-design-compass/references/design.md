@@ -59,6 +59,8 @@ Walk through dependency timeout, overload, partial failure, data corruption, reg
 
 Describe implementation slices, interface compatibility, data migration, shadow or canary validation, rollback boundaries, and success metrics. Separate the target architecture from the smallest safe next step.
 
+Select one viable baseline and keep alternatives out of its committed flow. Justify an additional component by a required capability the existing owner cannot provide, not unknown scale alone. For deployment, name an executable rollback action; use [evolution](evolve.md) for its state and external-effect boundary. A canary or feature flag without a rollback action does not explain recovery from a bad deployment.
+
 ## Choose the output size
 
 - Use an ADR when one narrow decision is the point.

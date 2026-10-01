@@ -5,7 +5,7 @@
 ![A precision compass on a navy architectural map, with a copper route connecting the chosen system boundaries.](assets/system-design-compass-hero.png)
 
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-compatible-172b3a)](https://agentskills.io)
-[![Status](https://img.shields.io/badge/status-research_preview-c47a3b)](evals/results/2026-09-30.md)
+[![Status](https://img.shields.io/badge/status-research_preview-c47a3b)](evals/results/2026-10-01.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-172b3a)](LICENSE)
 
 Give your coding agent a better way to reason about **system design, architecture reviews and safe migrations**. Start with the decision, find the invariant, challenge the failure path, and collect the evidence that separates credible options.
@@ -14,9 +14,9 @@ Give your coding agent a better way to reason about **system design, architectur
 
 [Get started](#get-started) · [See the decision lens](#a-better-question-changes-the-design) · [Browse the guides](#find-the-right-guide) · [Read the evidence](#measured-results-and-current-limits)
 
-> **Research preview · `1.1.0-rc.1`**
+> **Version `1.1.0` · evaluation incomplete**
 >
-> The complete two-model acceptance gate is still open. Tested improvements, excluded runs and remaining failures are published—not hidden behind a benchmark badge.
+> The recorded behavior gate did not pass. See the report before relying on these recommendations in production.
 
 ## A better question changes the design
 
@@ -126,18 +126,19 @@ Catalogs expose questions and failure cases; they are not prebuilt architectures
 
 ## Measured results and current limits
 
-The [2026-09-30 evaluation](evals/results/2026-09-30.md) tested `gpt-5.6-sol` and `gpt-5.6-luna` at medium reasoning using authored cases and frozen snapshots.
+The [evaluation report](evals/results/2026-10-01.md) separates behavior, context cost and packaging. `1.1.0` is the only distributable version; `rc.*` labels in evaluation history identify frozen test snapshots. The full behavior gate did not pass, and the latest early check found further failures.
 
 | Observation | What the evidence supports |
 |---|---|
-| **594 → 448 entrypoint words** | The evaluated candidate's entrypoint was 24.6% smaller. |
-| **Repeated queue-recovery correction** | The strong model added actionable recovery validation; two clean confirmations preserved the result. |
-| **3,372 → 448 read words in a narrow ADR** | The strong model's observed skill-read proxy fell 86.7% in this paired case. This is not a token or universal savings claim. |
-| **Acceptance remains open** | Smaller-model coverage is incomplete; provider verification and narrow-ADR completeness still have failures. |
+| **594 → 469 entrypoint words** | The current entrypoint is 21.0% smaller. The approximate 400-word target remains unmet. |
+| **rc.9: 1,248 → 1,105 narrow-task read words** | Gemini 3.6 Flash Medium loaded 11.5% less skill text in the paired ADR case. |
+| **rc.9: 2,723 → 789 narrow-task read words** | Gemini 3.8 Flash Medium loaded 71.0% less skill text in the paired ADR case. |
+| **rc.9: 79 installation targets / 55 directories** | Installation preserves entrypoint semantics and all 14 reference files; it does not establish behavioral quality in every agent. |
+| **rc.10 early webhook: 0/2 candidate cases passed** | Both selected models missed required crash-window, retry-capacity or test details; the full comparison was stopped. |
 
-The evaluation recorded 138 attempts plus nine earlier preflights. Thirty-six protocol failures and 16 contaminated subjects were excluded. Raw trace proxies, real CLI token totals, blinded grades and conservative artifact reviews are reported separately.
+Read-word measurements are approximate context proxies, not token savings or universal results. Both evaluated models are user-selected Flash versions at medium effort. Earlier Codex cohorts remain separate. Failures, interrupted calls, budget amendments and grading limitations are retained in the report.
 
-Subsequent documentation formatting does not constitute a new behavioral evaluation. Historical scores and hashes refer to the evaluated snapshots.
+The [initial September report](evals/results/2026-09-30.md) is historical evidence for its frozen source, not a certification of this candidate.
 
 ## Portable by construction
 

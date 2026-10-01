@@ -138,9 +138,13 @@
 
 **Scale axes:** active users, update frequency, friendship edges, nearby density, subscriptions, and fan-out.
 
-**Failure prompts:** stale authorization, rapid boundary churn, celebrity/high-degree user, location replay, region handoff, inference from update timing, and reconnect burst.
+**Failure prompts:** stale authorization, rapid boundary churn, celebrity/high-degree user, location replay, region handoff, inference from update timing, and reconnect burst. An authorized viewer can combine repeated distance-band queries with their own changing position to infer finer location; removing coordinates alone does not bound disclosure.
 
-**Trade-offs:** pull-on-view versus geocell pub/sub; exact coordinates versus privacy-preserving buckets; periodic versus movement-triggered updates; approximate presence. Treat location as sensitive ephemeral data and define retention/deletion explicitly.
+**Trade-offs:** compare actual mechanisms. Pull reads authorized friends' latest state; work follows active queries and friend degree. Geocell pub/sub routes updates to active cell subscribers, then enforces relationship authorization; work follows updates and cell occupancy, with dense-cell hotspots. A hybrid sends bounded invalidations to active viewers and pulls current authorized state, trading extra coordination for fewer repeated reads. Choose from measured cadence, degree/density skew, freshness and revocation budgets; do not install all three.
+
+**Decision evidence:** explain these alternatives in the recommendation; naming an alternative only as a future trigger does not compare its cost or failure boundary. Explain how a moving authorized viewer could infer location through repeated queries. Select a permitted disclosure policy and enforcement mechanism, such as stable subject coarsening plus bounded refresh/query budgets; distance bands or rate limits alone do not prove privacy. Test probing from multiple positions against that policy and disclose residual inference rather than asserting that coordinates being absent prevents it.
+
+**Validation:** inject a crowded cell, many simultaneous reconnects, stale presence and revocation. State the bounded response: partition or suppress optional cell fan-out, jitter/rate-limit reconnects, reject expired locations and fail closed on authorization uncertainty. Measure client transmissions and radio wakes as well as server load; coalesce movement updates and bound foreground/background refresh. Repeat probing from multiple positions to test the allowed precision/freshness policy, not merely the absence of coordinate fields. Use short retention and explicit deletion, and treat cached or previously observed locations as a disclosure boundary rather than data that can be recalled.
 
 ---
 

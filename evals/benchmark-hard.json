@@ -1,0 +1,56 @@
+{
+  "name": "benchmark",
+  "cases": [
+    {
+      "id": "wallet-retry-namespace",
+      "mode": "design",
+      "setup": "A multi-tenant wallet API accepts transfers and refunds. request_id is an arbitrary client-chosen string, not a server UUID. Clients can reuse it in another tenant or operation type. An authenticated user may own several wallets; ownership can be revoked between a request and its retry. Transfers change two balances and append ledger postings. Payouts call a provider that deduplicates a merchant-scoped key for 24 hours and supports lookup by merchant plus key. Internal retry/replay is supported for seven days. A timeout may happen after provider success. Webhook event IDs are unique only within a provider merchant account; delivery is duplicated and out of order. The product promises no unauthorized debit, no duplicate economic effect and no lost accepted operation. No compliance regime or throughput target is supplied.",
+      "prompt": "Design the smallest implementation-ready command, ledger and provider boundary. Specify identities, atomic enforcement, ambiguous outcomes and owned recovery. Include a falsifiable validation plan; distinguish promises that need a stronger provider contract.",
+      "files": {
+        "api-contract.md": "POST /tenants/{tenant}/wallets/{wallet}/transfers\nPOST /tenants/{tenant}/wallets/{wallet}/refunds\nBody: request_id, amount_minor, currency, destination_or_original_transfer\nThe request_id belongs to the caller; duplicate payloads can differ.\nProvider payout: merchant_id, key, amount_minor, destination\nProvider webhook: merchant_id, event_id, object_id, status\nProvider lookup returns applied, rejected, pending, or not_found; not_found does not prove no in-flight request.\n"
+      },
+      "checks": [
+        {"id": "scoped-identity", "critical": true, "requirement": "Defines enforceable caller/tenant/operation retry namespace, conflicting payload handling and scoped provider-event uniqueness; a global arbitrary client key is insufficient."},
+        {"id": "authorization", "critical": true, "requirement": "Authorizes resource mutation and replayed stored results against current access; authenticates and binds merchant/object events before state changes."},
+        {"id": "atomic-ledger", "critical": true, "requirement": "Claims identity, stores outcome and commits exact balanced immutable postings/available-funds enforcement at one atomic authority under concurrent calls."},
+        {"id": "retention-boundary", "critical": true, "requirement": "Does not blindly resend an ambiguous payout after 24-hour provider dedup expiry or treat not_found as proof of failure; separates seven-day local replay from external effect safety."},
+        {"id": "repair", "critical": false, "requirement": "Explicit unknown/terminal states, authoritative lookup/statement reconciliation, out-of-order event policy and a responsible bounded repair path."},
+        {"id": "experiment", "critical": false, "requirement": "Tests concurrent same-key calls, changed payload, cross-namespace collision, access revocation, lost provider response beyond dedup expiry and merchant event collisions; checks durable/economic outcomes."}
+      ]
+    },
+    {
+      "id": "retry-stage-overload",
+      "mode": "review",
+      "setup": "A shared attempt queue receives 100 new logical jobs/s. Four workers execute 40 attempts/s each; one worker is lost for a ten-minute burst of 300 new jobs/s. Ninety percent of jobs are ordinary: their first attempt fails with probability 0.5, and subsequent attempts fail with probability 0.1 independently. Ten percent are poison jobs that always fail. The existing policy retries forever immediately. Operations proposes a maximum of four attempts and declares this equivalent to eventual successful completion. It also proposes sizing from 1/(1-0.1), reporting only successful jobs, and increasing storage to cure overload. Jobs consume equal time per attempt. The business requires every accepted job to finish or remain visibly owned for repair; no completion deadline is supplied.",
+      "prompt": "Review the proposed capacity/retry policy using the raw worker behavior. Identify the smallest correction, auditable normal/burst bounds and a recovery experiment. Separate attempt demand, successes and terminal repair; do not silently replace the failure distribution with a constant probability.",
+      "files": {
+        "worker.py": "def handle(job):\n    try:\n        apply(job)\n        mark_success(job)\n    except TransientFailure:\n        enqueue_immediately(job)  # includes jobs that always fail\n\ndef proposed_terminal(job):\n    if job.attempts >= 4:\n        mark_success(job)  # dashboard considers it drained\n"
+      },
+      "checks": [
+        {"id": "poison", "critical": true, "requirement": "Unlimited poison retries have no finite steady-state workload/drain guarantee; storage does not repair the growing retry population."},
+        {"id": "bounded-demand", "critical": true, "requirement": "For four-attempt policy derives ordinary expected attempts 1+0.5+0.05+0.005=1.555 and mixture 0.9*1.555+0.1*4=1.7995 attempts/new job, with honest assumptions."},
+        {"id": "capacity", "critical": true, "requirement": "Recognizes 179.95 normal attempts/s exceeds four-worker 160/s capacity even after restoration; burst demand 539.85/s exceeds available 120/s, so bounded retries alone do not establish drain."},
+        {"id": "terminal-correctness", "critical": true, "requirement": "Rejects marking attempt exhaustion successful; preserves unresolved accepted work and states permanent/ordinary exhaustion needs separate owned repair."},
+        {"id": "conservation", "critical": false, "requirement": "Labels expected work versus actual executed attempts; no exact logical-success backlog from demand minus attempt departures and no double-counted retries."},
+        {"id": "experiment", "critical": false, "requirement": "Injects the mixed failure workload, burst, worker loss/restoration and exhaustion, then measures completed and repaired jobs separately, age/headroom and an operator intervention."}
+      ]
+    },
+    {
+      "id": "cutover-inflight-rollback",
+      "mode": "evolve",
+      "setup": "A writable order store is copied into a split-fulfillment representation. CDC events carry per-order monotonic versions, including tombstones, but commit offsets and entity versions are different domains. The scan is non-snapshot and can deliver stale rows after newer CDC. Version comparison is currently read-then-write in the target. A legacy transaction can pass admission, pause, then commit after cutover's recorded cursor. Split-aware writes and irreversible shipments can begin at the target immediately after routing changes. Legacy binaries cannot read split records; their mobile clients remain supported for 90 days. A seven-day field-deletion date is proposed. Target CDC is not copied back to the old store.",
+      "prompt": "Review the supplied cutover and define a minimal safe phase plan with authoritative ownership, capture/apply boundaries, mixed-client compatibility and executable rollback tests. Identify the last state where the old binaries are actually a safe rollback; avoid a whole-system rewrite.",
+      "files": {
+        "cutover.py": "def apply(event):\n    saved = target.read(event.id)\n    if saved is None or event.version > saved.version:\n        target.write(event)\n\ndef cutover():\n    ingress.accept_new = False\n    final_cursor = source.current_commit_offset()\n    wait_until_consumer_offset(final_cursor)\n    assert source.live_count() == target.live_count()\n    router.use_target()\n    ingress.accept_new = True\n\ndef rollback():\n    deploy_legacy_binary()\n    router.use_source()\n"
+      },
+      "checks": [
+        {"id": "atomic-apply", "critical": true, "requirement": "Explains concurrent stale read-then-write regression and enforces per-entity version/tombstone guard atomically at target apply, distinguishing CDC offsets."},
+        {"id": "commit-barrier", "critical": true, "requirement": "Admission stop alone misses an already-admitted source transaction; drains/aborts in-flight writes and fences all commit paths before final committed capture boundary and authority handoff."},
+        {"id": "convergence", "critical": true, "requirement": "Retained capture precedes non-snapshot scan, deletions survive stale scans, processed offset proves completed apply rather than fetch, and reconciliation compares version/deletion/content not live counts."},
+        {"id": "rollback", "critical": true, "requirement": "Old binaries/routing cease to be safe with target-only split writes; preserves accepted target/external facts and requires compatible forward repair or verified reverse movement, not blind source restore."},
+        {"id": "compatibility", "critical": false, "requirement": "Retains truthful old-client semantics for 90 days/observed retirement, and rejects deleting fields merely at day seven."},
+        {"id": "drill", "critical": false, "requirement": "Tests paused legacy commit, concurrent target apply, delete-before-scan/restart, mixed clients and rollback after target writes/shipments; verifies durable authority and no lost/duplicated orders."}
+      ]
+    }
+  ]
+}

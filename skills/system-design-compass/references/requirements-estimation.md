@@ -78,6 +78,17 @@ time_to_clear_backlog = backlog / net_drain_rate
 
 The result is unbounded when consumer capacity does not exceed sustained producer rate. Use peak duration and burst absorption to size buffers; do not hide permanent under-capacity behind a large queue.
 
+Distinguish provisioned workers from available workers: subtract the stated failure allowance before multiplying per-worker capacity. Recompute the proposed remedy under the same failure scenario; healthy-state sizing cannot prove degraded recovery.
+
+Keep unique unfinished jobs separate from attempt-queue entries. With immediate retries, reconcile either accounting model over the same interval:
+
+```text
+unfinished_job_growth = new_job_arrivals - successful_job_completions
+attempt_queue_growth = new_job_arrivals + retry_returns - attempt_departures
+```
+
+Do not add retry returns after already discounting attempt capacity to successful completions: that counts failures twice. During overload, required attempts are not attempts actually executed. Cross-check decision-driving totals against this flow balance and reconcile introductory estimates with the detailed calculation before recommending capacity.
+
 Estimate:
 
 - Active users and operations per journey.

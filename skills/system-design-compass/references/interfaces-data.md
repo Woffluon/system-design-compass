@@ -14,6 +14,14 @@ For each invariant identify:
 - How a violation is detected and repaired.
 - Whether the guarantee is immediate, bounded, or eventual.
 
+### Authorization is part of the state boundary
+
+Read this check for sensitive state mutations or externally supplied events. Identify the authenticated actor, tenant/resource ownership, permitted operation and provider-event origin before choosing state transitions.
+
+**Counterexample:** a valid, balanced transfer debits someone else's wallet, or a forged provider event finalizes a payment. Ledger conservation and event deduplication do not prevent either violation.
+
+Enforce resource authorization before mutation **and before returning an idempotently stored result**. Authenticate provider events and bind their provider account/object to the local tenant and operation; a valid payload schema is insufficient. Trusted upstream enforcement is a valid boundary only when its contract and bypass paths are evidenced. Test an authenticated non-owner, a cross-tenant replay and a forged event: deny access, disclose no stored result and leave authoritative state unchanged.
+
 ## Choose interaction semantics
 
 Use synchronous calls when the caller needs an immediate result and the dependency can fit the latency and availability budget. Use asynchronous work when buffering, independent scaling, fan-out, retries, or long processing is more important than immediate completion.
@@ -39,6 +47,24 @@ For each command or query specify:
 
 Use opaque cursors when offset pagination becomes unstable or expensive under concurrent writes. Keep transport success separate from business completion for accepted asynchronous work.
 
+### Make retry identity enforceable
+
+Open this check when client retries can mutate valuable state. A stable ID without a namespace is incomplete: two tenants may choose the same ID, or one caller may reuse it for a different command. Specify the identity scope, such as `(tenant, caller, operation type, client key)`, and enforce uniqueness at the authoritative store. Include only dimensions that distinguish business operations; do not generate a new key on retry.
+
+Claim the scoped key, bind its request digest, mutate state and persist the durable result in one transaction or an equivalent atomic boundary. A concurrent duplicate waits for or reads that result; conflicting payload reuse fails. After commit followed by a lost response, retry returns the same authorized result. Test concurrent same-key calls, payload conflicts, cross-tenant collisions and crashes before/after commit. Retention must cover supported retries and replay; deleting the identity can permit a new effect.
+
+### Resolve an external outcome before retry or correction
+
+Open this section for valuable external effects, ambiguous provider attempts or payment recovery. Required evidence: durable intent/provider identities, idempotency and query retention, callback origin, journal transitions and reconciliation records.
+
+**Failure sequence:** the provider commits, then the worker crashes before local acknowledgement or the reply times out. Retrying under a new identity duplicates the effect; declaring failure can release funds already spent remotely. A local transaction or outbox cannot atomically join an independent provider's commit.
+
+Persist the authorized intent and stable provider identity before submission. Keep the outcome unknown until a canonical query, authenticated callback or statement reconciliation resolves it. Atomically bind the provider object and terminal outcome to a unique local posting/result. When provider idempotency or query retention no longer covers the attempt, hold and escalate rather than inventing a safe new submission.
+
+Give stuck intents an owner and intervention threshold: query/reconcile, retry the existing identity when safe, or route to manual resolution. Attempt exhaustion is not settlement. Refunds and reversals are new authorized postings linked to the original; reconcile provider statements to the journal and route unmatched items to an owned repair queue.
+
+Test crashes before submission and after remote commit/before local acknowledgement, missing or reordered callbacks, expired identity retention, stuck-intent recovery and reversal. Pass when observed provider effects and local postings agree with the intent; ambiguity remains owned without duplicate effects, unauthorized corrections or premature fund release.
+
 ## Event contract checklist
 
 An event envelope commonly needs an event ID, event type, schema version, occurrence time, producer, subject or partition key, correlation/causation IDs, tenant, trace context, and payload. Include only fields the system can define consistently.
@@ -53,6 +79,8 @@ State whether the event is a fact, command, notification, or state transfer. Def
 - Sensitive-data classification and retention.
 
 Do not promise "exactly once" without naming the atomic boundary that joins consumption, state mutation, and acknowledgement.
+
+A broker's ordering or deduplication does not establish exactly-once external processing. DLQ isolation and replay can reorder an entity's business operations. Preserve canonical entity state or hold later work when order is an invariant; test poison-message isolation followed by replay. Resolve external effects with the [outcome mechanism](#resolve-an-external-outcome-before-retry-or-correction).
 
 ## Model data around ownership and access
 

@@ -44,6 +44,8 @@
 
 **Trade-offs:** hosted provider surface versus direct handling; payment intent state machine; idempotency record and result retention; append-only double-entry ledger; asynchronous provider events; reconciliation as a control loop. Never infer failure from timeout, mutate historical ledger entries, or use floating point for monetary amounts.
 
+Use the shared [external-outcome mechanism](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction) for provider ambiguity, statement reconciliation and recovery.
+
 ---
 
 ## 27. Digital wallet and ledger
@@ -57,6 +59,8 @@
 **Failure prompts:** concurrent spend, duplicate transfer, partial cross-shard posting, stale balance, out-of-order reversal, unbalanced recovery, and snapshot/log divergence.
 
 **Trade-offs:** single-writer account partitions; append-only double-entry journal; cached/materialized balances verified against postings; reservation/hold workflow; deterministic command ordering; cross-partition coordination versus asynchronous settlement. Treat event sourcing, CQRS, consensus, or two-phase protocols as mechanisms with operational costs, not correctness slogans.
+
+When provider operations or events affect wallet balances, resolve that boundary with the shared [external-outcome mechanism](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction); local balance conservation alone is insufficient.
 
 ---
 

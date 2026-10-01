@@ -39,6 +39,14 @@ Specify:
 
 Never treat record counts alone as correctness proof. Compare business invariants, sampled content, aggregates, and boundary conditions.
 
+Make discrepancy repair explicit: read the authoritative row or deletion at its version, apply it through the same atomic version guard as capture/backfill, and reconcile again. Never repair from an unversioned stale scan. Give the repair an owner and escalation threshold; mismatches block cutover until repaired or explicitly accepted within the correctness envelope.
+
+### Prove the ownership handoff
+
+Read this check for writable-source copy or capture migrations. Establish replayable capture before the scan and retain versioned deletion evidence. At cutover, block new source writes **and resolve transactions already in flight** by draining or aborting them. Only then record the final committed capture boundary, apply through it, reconcile and enable the target owner. An admission flag alone cannot stop a transaction that already passed it; a post-boundary source commit can otherwise disappear from the target. Fence stale writers at their actual commit boundary.
+
+Exercise delayed stale scan results, deletion before scanning, duplicate/out-of-order capture and restart. Require the newest version/deletion/content at the target, no lost accepted writes and one authoritative writer. If these barriers cannot be enforced, identify the missing capability instead of authorizing cutover.
+
 ## Make each phase executable
 
 For every phase record:
@@ -54,6 +62,8 @@ For every phase record:
 
 Keep rollback within the tested compatibility window. A rollback that reintroduces code unable to read newly written data is not a rollback.
 
+Specify a rollback drill before promoting a stateful phase: create data and pending work with the new version, restore the proposed compatible code/routing, exercise supported old clients and reconcile accepted operations. Check response meaning as well as schema decoding, and verify no work is lost or replayed twice. State which new writes or external effects make rollback unsafe; test forward repair or reverse synchronization at that boundary instead. A planned drill remains a release prerequisite until its results exist.
+
 ## Control operational risk
 
 Budget migration traffic separately from user traffic. Apply backpressure and pause controls. Monitor correctness deltas, queue age, saturation, latency, errors, cost, and SLO burn by old/new path and cohort. Preserve correlation identifiers across both systems.
@@ -61,6 +71,8 @@ Budget migration traffic separately from user traffic. Apply backpressure and pa
 Assign a decision maker for cutover and abort. Schedule high-risk phases when the team can observe them, while respecting regional traffic and business cycles. Prefer automated stop conditions for measurable hazards.
 
 ## Contract the old system
+
+Treat dates as checkpoints, not retirement evidence. Storage can retire separately from public contracts only after proving translation of supported reads **and writes** and explicitly closing old-binary rollback. Install quarantine before routing to old workers: a readable `pending` projection can still duplicate an external effect.
 
 Remove old reads, writes, credentials, routes, data, jobs, flags, dashboards, and alerts only after:
 

@@ -4,7 +4,9 @@
 
 ## Report a vulnerability
 
-Use GitHub's private vulnerability reporting for this repository. Provide enough evidence to reproduce the behavior without exposing real data:
+GitHub private vulnerability reporting is currently disabled for this repository. Arrange a private channel with a maintainer before sharing sensitive details. If you cannot reach one privately, request a private reporting route in an issue without describing the vulnerability or including reproduction data.
+
+Once a private channel is established, provide enough evidence to reproduce the behavior without exposing real data:
 
 | Field | Useful detail |
 |---|---|
