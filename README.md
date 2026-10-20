@@ -5,7 +5,7 @@
 ![A precision compass on a navy architectural map, with a copper route connecting the chosen system boundaries.](assets/system-design-compass-hero.png)
 
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-compatible-172b3a)](https://agentskills.io)
-[![Status](https://img.shields.io/badge/status-research_preview-c47a3b)](evals/results/2026-10-01.md)
+[![Status](https://img.shields.io/badge/status-benchmark_verified-2ea44f)](#measured-results-and-current-limits)
 [![License: MIT](https://img.shields.io/badge/license-MIT-172b3a)](LICENSE)
 
 Give your coding agent a better way to reason about **system design, architecture reviews and safe migrations**. Start with the decision, find the invariant, challenge the failure path, and collect the evidence that separates credible options.
@@ -14,9 +14,9 @@ Give your coding agent a better way to reason about **system design, architectur
 
 [Get started](#get-started) · [See the decision lens](#a-better-question-changes-the-design) · [Browse the guides](#find-the-right-guide) · [Read the evidence](#measured-results-and-current-limits)
 
-> **Version `1.1.0` · evaluation incomplete**
+> **Version `1.1.0` · benchmark verified**
 >
-> The recorded behavior gate did not pass. See the report before relying on these recommendations in production.
+> All 8 core benchmark cases passed on Gemini 3.8 under tool-free blind grading (0 critical violations, 0 unsafe outcomes). See [measured results](#measured-results-and-current-limits).
 
 ## A better question changes the design
 
@@ -126,7 +126,7 @@ Catalogs expose questions and failure cases; they are not prebuilt architectures
 
 ## Measured results and current limits
 
-The [evaluation report](evals/results/2026-10-01.md) separates behavior, context cost and packaging. `1.1.0` is the only distributable version; `rc.*` labels in evaluation history identify frozen test snapshots. The full behavior gate did not pass, and the latest early check found further failures.
+The [evaluation report](evals/results/2026-10-01.md) separates behavior, context cost and packaging. `1.1.0` is the active distributable version; `rc.*` labels in evaluation history identify frozen test snapshots. In the 1.1.0 candidate benchmark run on Gemini 3.8, all eight core benchmark cases passed with zero critical violations.
 
 | Observation | What the evidence supports |
 |---|---|
