@@ -6,3 +6,4 @@ skills-lock.json
 .DS_Store
 Thumbs.db
 evals/artifacts/
+.codegraph/

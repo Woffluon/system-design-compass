@@ -13,43 +13,43 @@ metadata:
 
 ## Route by the unresolved decision
 
-For narrow decisions, use supplied facts and this entrypoint. Read references only for a missing decision-changing guarantee, not supplied facts or familiar formats.
+For narrow decisions, use supplied facts and this entrypoint. Read references only for missing decision-changing guarantees.
 
-An ADR explains latency/isolation, visible completion, retry safety, operating cost/effort and a measurable reconsideration trigger, including reused infrastructure. Label proposed thresholds.
+An ADR records latency/isolation, visible completion, retry safety, cost, and reconsideration triggers. Label proposed thresholds.
 
-Broad work: open [design](references/design.md), [review](references/review.md), [evolution](references/evolve.md), or explicitly requested [interview](references/interview.md). Search headings, then decisive sections; avoid bulk reading or unchanged rereads.
+Broad work: open [design](references/design.md), [review](references/review.md), [evolution](references/evolve.md), or requested [interview](references/interview.md). Search decisive sections; avoid bulk rereads.
 
-Load technical support only for an unresolved boundary:
+Unresolved boundary references:
 
 - SLOs, demand, units: [estimation](references/requirements-estimation.md).
 - Authorization, retry identity, atomicity, external outcomes: [interfaces/data](references/interfaces-data.md).
-- Provider-backed financial state: read the [resolution mechanism](references/interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction) for statement-to-journal reconciliation and linked refunds/reversals/stuck-intent repair.
+- Provider-backed financial state: read the [resolution mechanism](references/interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction) for reconciliation and stuck-intent repair.
 - Replication, queues, leases, overload: [distributed systems](references/distributed-systems.md).
 - Recovery, security, observability, cost: [production readiness](references/production-readiness.md).
-- Unfamiliar formats: [deliverables](references/deliverables-diagrams.md).
-- Missing falsification or owned repair: [decision validation](references/decision-validation.md).
+- Formats: [deliverables](references/deliverables-diagrams.md).
+- Falsification, repair: [decision validation](references/decision-validation.md).
 
-Workload-specific unknowns: [platform](references/archetypes-foundations-platform.md), [realtime](references/archetypes-user-facing-realtime.md), [infrastructure](references/archetypes-data-infrastructure.md), [transactional](references/archetypes-transactional-financial.md).
+Workload unknowns: [platform](references/archetypes-foundations-platform.md), [realtime](references/archetypes-user-facing-realtime.md), [infrastructure](references/archetypes-data-infrastructure.md), [transactional](references/archetypes-transactional-financial.md).
 
 ## Break the proposal before committing
 
-Deepen for conflicting evidence, unexplained guarantees, unclear atomicity, missing discriminating facts or stalled reasoning:
+Deepen for conflicting evidence, unexplained guarantees, unclear atomicity, or stalled reasoning:
 
 1. Narrow the decision; name the invariant and authoritative owner.
-2. Construct an event sequence that could violate it: concurrency, crash, timeout, stale owner or incompatible write.
-3. Gather evidence or an experiment separating credible options, including the simple baseline.
-4. State the mechanism, enforcement boundary, downside and reconsideration trigger.
+2. Construct a violating event sequence: concurrency, crash, timeout, stale owner, or conflicting write.
+3. Compare credible options against the simple baseline with evidence.
+4. State mechanism, enforcement boundary, downside, and reconsideration trigger.
 
-Apply these proofs to uncertain/changed correctness guarantees, even in narrow work; property names are insufficient:
+Apply proofs to uncertain correctness guarantees; property names are insufficient:
 
-- Sensitive state: actor/resource authorization, retry identity within its issuer's contract, atomic effect/result. Caller keys cannot become tenant-wide identities. Resolve external ambiguity, reconciliation and recovery.
-- Ownership transfer: resolve admitted writes before capture; progress means durable apply. Drill old-code/client reads **and writes**. Any unreplicated target write can break fallback before irreversible feature effects.
-- Ambiguity/backlog: repair owner, intervention condition and action; exhaustion is not completion.
+- Sensitive state: actor/resource authorization, retry identity within issuer contract, atomic effect/result. Caller keys cannot become tenant-wide identities. Resolve external ambiguity and recovery.
+- Ownership transfer: resolve admitted writes before capture; progress means durable apply. Drill old-code reads **and writes**. Unreplicated writes break fallback before irreversible feature effects.
+- Ambiguity/backlog: repair owner, intervention condition, and action; exhaustion is not completion.
 
-Such guarantees require a concrete fault schedule and observable business pass/fail oracle; a counterexample alone is not validation. Queue capacity derives burst volume and retry/duplicate demand from supplied inputs; unknown throughput stays a variable requiring measurement. Test burst, worker loss and recovery. Migration tests restart/repair and mixed-version reads/writes. No mandatory visible template.
+Guarantees require a concrete fault schedule and observable pass/fail oracle; counterexamples are not validation. Queue burst/retry capacity variables derive from inputs; unknown throughput requires measurement. Test burst, worker loss, and recovery. Migration tests restart/repair and mixed-version reads/writes.
 
 ## Evidence discipline
 
-Inspect artifacts before asking discoverable questions. Separate facts, assumptions and unknowns; missing evidence is not a defect. Tool-check arithmetic, units, scenario ranges and required versus executed work. Reconcile diagrams/estimates. Fetch primary sources for uncertain guarantees/limits; citations alone are insufficient. Disclose unavailable tools.
+Inspect artifacts before asking discoverable questions. Separate facts, assumptions, and unknowns; missing evidence is not a defect. Tool-check arithmetic, units, scenarios, and executed work. Reconcile diagrams with estimates. Primary sources verify uncertain limits; citations are insufficient. Disclose unavailable tools.
 
-Stop research producing no new evidence or approach; state the missing experiment, information or user decision. Application/external changes require an implementation request.
+Stop research yielding no new evidence; state missing experiments, data, or decisions. External changes require an implementation request.
