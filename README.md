@@ -131,6 +131,7 @@ The [evaluation report](evals/results/2026-10-01.md) separates behavior, context
 | Observation | What the evidence supports |
 |---|---|
 | **594 → 397 entrypoint words** | The current entrypoint is 33.2% smaller, meeting the approximate 400-word target. |
+| **1.1.0 candidate benchmark (Gemini 3.8): 8/8 passed** | All eight core benchmark cases passed (0 critical violations, 0 unsafe outcomes) under tool-free blind grading. |
 | **rc.9: 1,248 → 1,105 narrow-task read words** | Gemini 3.6 Flash Medium loaded 11.5% less skill text in the paired ADR case. |
 | **rc.9: 2,723 → 789 narrow-task read words** | Gemini 3.8 Flash Medium loaded 71.0% less skill text in the paired ADR case. |
 | **rc.9: 79 installation targets / 55 directories** | Installation preserves entrypoint semantics and all 14 reference files; it does not establish behavioral quality in every agent. |
