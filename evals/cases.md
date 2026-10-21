@@ -72,7 +72,7 @@ Create an implementation-ready migration plan.
 **Required behavior:**
 
 - **Critical:** states throughout-migration invariants and the source of truth for every phase.
-- Uses compatible expand–migrate–contract steps and accounts for old clients.
+- Uses compatible expand-migrate-contract steps and accounts for old clients.
 - Defines an outbox or another justified atomic publication boundary.
 - Includes cohorting, observation windows, abort thresholds, reconciliation, and tested rollback.
 - Does not remove the old contract before usage and compatibility evidence permit it.

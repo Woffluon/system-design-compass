@@ -1,46 +1,65 @@
 # Comparative evaluation
 
-**Measure decisions and context together.** Compare frozen skill versions in equivalent sessions, grade without condition labels, and keep invalid attempts visible.
+**Measure architecture decisions and context loading together.** Compare frozen skill snapshots in equivalent isolated sessions, grade answers without condition or model labels, and keep failed, timed-out, or contaminated attempts visible.
 
-[Cases](#choose-the-cases) · [Run](#record-subjects) · [Grade](#grade-without-condition-labels) · [Accept](#apply-the-release-gate) · [Measurements](#interpret-the-measurements)
+[Pipeline](#evaluation-and-blind-grading-pipeline) · [Suites & cases](#choose-the-cases) · [Isolation rules](#establish-isolation-before-a-batch) · [Record subjects](#record-subjects) · [Blind grading](#grade-without-condition-labels) · [Release gate](#apply-the-release-gate) · [CLI & status reference](#cli-reference-and-status-codes) · [Troubleshooting](#troubleshooting-evaluation-runs)
 
-The [2026-10-01 follow-up](results/2026-10-01.md) and [machine-readable results](results/2026-10-01.json) separate current acceptance from interrupted trials and previous snapshots. The [2026-09-30 report](results/2026-09-30.md) remains historical evidence.
+> [!IMPORTANT]
+> **Published evaluation records:**
+> - [2026-10-01 follow-up report](results/2026-10-01.md) and [machine-readable archive](results/2026-10-01.json) cover the `rc.1` through `rc.10` cohorts and the current 397-word `1.1.0` candidate benchmark on `gemini-3.8-flash-medium`.
+> - [Prospective protocol and stage ledger](acceptance-2026-10-01.md) documents every budget ceiling and protocol amendment in chronological order.
+> - [2026-09-30 baseline report](results/2026-09-30.md) and [machine-readable record](results/2026-09-30.json) remain historical evidence for the initial snapshot.
+
+## Evaluation and blind grading pipeline
+
+The evaluation tools in [`tools/`](../tools/) enforce a strict separation between subject execution, anonymization, grading, and acceptance verification:
+
+```mermaid
+flowchart LR
+    classDef navy fill:#172b3a,stroke:#0d1b26,color:#f6f1e7,stroke-width:1.5px
+    classDef copper fill:#c47a3b,stroke:#8f5322,color:#ffffff,stroke-width:2px
+    classDef slate fill:#f6f1e7,stroke:#172b3a,color:#172b3a,stroke-width:1.5px
+
+    Snap["1. evaluate_skill.py snapshot\nFreeze skill + SHA-256"]:::slate --> Run["2. evaluate_skill.py run / evaluate_agy.py\nIsolated subject runs (none / current / candidate)"]:::navy
+    Run --> Blind["3. evaluate_skill.py blind\nShuffle answers -> blind.json + key.json"]:::copper
+    Blind --> Prep["4. evaluate_skill.py prepare-grading\nBuild tool-free batches -> grading.json"]:::navy
+    Prep --> Grade["5. Grader run\nEvaluate checks -> grades.json"]:::navy
+    Grade & Blind --> Comp["6. compare_evals.py\nUnblind, validate rubric -> comparison.json"]:::copper
+    Comp --> Gate["7. check_acceptance.py\nVerify 2-model wins, regressions & context"]:::slate
+```
 
 ## Choose the cases
 
-| Resource | Purpose | Coverage |
+| Suite file | Purpose | Case coverage |
 |---|---|---|
-| [benchmark.json](benchmark.json) | Compare no skill, original and candidate. | Eight cases: two design, two review, two evolution, a narrow ADR and a sound-system control. |
-| [benchmark-hard.json](benchmark-hard.json) | Resolve a baseline ceiling with prospective harder comparisons. | Retry namespaces/provider retention, mixed failure overload, and concurrent cutover/rollback. Extends the benchmark suite; does not replace its eight cases. |
-| [regression.json](regression.json) | Preserve existing behavior. | Eight single-turn adaptations of [cases.md](cases.md). |
-| [cases.md](cases.md) | Explain release expectations. | Required behaviors, critical conditions and unsafe outcomes. |
+| [benchmark.json](benchmark.json) | Compare `none`, `current` (original), and `candidate` conditions. | `8` cases: `reservation-owner`, `webhook-effect`, `queue-recovery`, `backfill-convergence`, `rollback-contract`, `sound-system`, `narrow-adr`, and `retry-review`. |
+| [benchmark-hard.json](benchmark-hard.json) | Resolve a strong-model baseline ceiling with harder variants. | `3` cases: `wallet-retry-namespace`, `queue-poison-amplification`, and `cutover-in-flight-divergence`. Shares suite name `"benchmark"` so `check_acceptance.py` unions coverage (`11` cases). |
+| [regression.json](regression.json) | Verify non-regression across core capabilities. | `8` single-turn adaptations of [cases.md](cases.md): `ambiguous-greenfield`, `architecture-evidence`, `monolith-evolution`, `wallet-correctness`, `location-privacy`, `concise-adr`, `current-provider`, and `interview-retrospective`. |
+| [cases.md](cases.md) | Human-readable specification of release expectations. | Required behaviors, **critical** invariants, and explicit **unsafe behavior** disqualifiers. |
 
-Rubrics measure behavior, not matching phrases or a required product. The interview regression is retrospective; it does not establish live dialogue quality.
+Rubrics score observable architectural mechanisms, not buzzwords or required vendor names. Note that `interview-retrospective` is a single-turn adaptation and does not measure live multi-turn dialogue.
 
-Use one strong and one smaller model from the same provider through existing access, unless the user explicitly selects a different comparison pair. Describe a version comparison as such; do not infer model size from its name. Freeze model IDs, reasoning effort, CLI version and skill snapshots. Do not add credentials or paid access to make a run succeed.
+Use one stronger and one smaller model from the same provider through existing authenticated access unless the user explicitly selects a different pair. Freeze model IDs, reasoning effort (`medium`), CLI versions, and skill snapshots before launching subjects. Never add paid API keys or subscriptions to force a run to succeed.
 
 ## Establish isolation before a batch
 
-| Boundary | Required treatment |
+| Boundary | Required enforcement |
 |---|---|
-| Session | Fresh temporary workspace; no prior answer or expected solution. |
-| Evidence | Raw fixtures and the request only; rubric outside the subject workspace. |
-| Skill | Explicit frozen copy; inspect actual loading traces. |
-| Host configuration | Disable discovery, plugins, apps, hooks, memories, AGENTS.md and ambient rules per invocation. Do not edit global configuration. |
-| Permissions | Equivalent across all compared conditions; verify real file access first. |
-| Side effects | Check workspace digest before/after. Exclude mutations and unauthorized skill reads. |
+| **Workspace** | Fresh temporary directory (`compass-eval-*` or `compass-agy-*`) per attempt; no prior answers or expected solutions. |
+| **Evidence** | Raw case fixtures and prompt only; scoring rubrics never enter the subject workspace. |
+| **Skill snapshot** | Explicit frozen copy at `workspace/skill/SKILL.md`; verify actual read commands in the JSONL trace. |
+| **Host configuration** | Disable skill discovery, plugins, apps, hooks, memories, `AGENTS.md`, and skill search per invocation without mutating global user files. |
+| **Permissions** | Identical sandbox mode across all compared conditions (`none`, `current`, `candidate`). |
+| **Side effects** | Compare workspace SHA-256 digests before and after execution; exclude mutations (`workspace-mutated`) and foreign skill reads (`contaminated`). |
 
-Configuration switches do **not** prevent direct filesystem access to installed skills. Audit normalized command paths, including escaped Windows paths. Reading outside the frozen skill workspace contaminates a subject even if the installed copy has the same name/version. Exclude it and report the missing case.
+> [!WARNING]
+> **Filesystem vs. configuration isolation:** CLI switches do **not** block an agent from reading an installed home-directory skill via shell commands. `tools/evaluate_skill.py` disables every discovered `SKILL.md` under `~/.codex/skills` and `~/.agents/skills` per invocation and audits normalized command paths (including escaped Windows paths). Any read of a skill path outside the temporary workspace marks the record `contaminated`.
 
-The recorder also disables discovered home-directory skills per invocation and disables skill search; global configuration and installed skill files are untouched. Empty conditional commands and discovery-only filename listings are not evidence of loaded text. Preserve any trace-audit correction alongside the original status. For a fixture supplied directly in the prompt, `--inline-fixtures` can provide the same raw contents in all compared conditions; declare that delivery before candidate trials and never include scoring checks.
+`read-only` execution is the default sandbox in [`tools/evaluate_skill.py`](../tools/evaluate_skill.py). Because some Windows hosts block all child shell reads in `read-only` mode, `--sandbox danger-full-access` may be selected explicitly for trusted authored fixtures so long as all compared conditions use the same setting. There is no automatic fallback after a sandbox rejection.
 
-Read-only execution is the default. Some Windows environments reject every shell process in that mode. For trusted authored fixtures, explicitly selecting `--sandbox danger-full-access` can match an unrestricted host, but it is not a security boundary. Workspace digests cannot prevent or detect every outside effect. Never use this alternative with untrusted workloads. There is no automatic escalation after rejection.
+### Antigravity CLI fallback (`tools/evaluate_agy.py`)
 
-These evaluations test explicit invocation, not automatic activation quality.
-
-### Antigravity fallback
-
-`tools/evaluate_agy.py` records a separate provider cohort through existing `agy` access. It installs a restricted agent in each temporary workspace, starts a fresh conversation, supplies identical raw fixtures inline, and preserves native events alongside normalized command outputs. Pin the exact IDs returned by `agy models`; a listing alone does not establish working access.
+[`tools/evaluate_agy.py`](../tools/evaluate_agy.py) records a separate provider cohort through existing `agy` CLI access. It provisions a restricted workspace agent (`.agents/sdc-subject.md`), starts a fresh project session (`--new-project`), supplies raw fixtures both on disk and inline in the prompt, and records native stream events alongside normalized command outputs:
 
 ```bash
 python tools/evaluate_agy.py --suite evals/benchmark.json \
@@ -49,15 +68,13 @@ python tools/evaluate_agy.py --suite evals/benchmark.json \
   --output evals/artifacts/agy-original --limit 94
 ```
 
-Antigravity's global rules and catalogs remain cumulative. The helper does not promise the Codex configuration boundary: audit native tool calls for other skill reads, keep the same ambient configuration across conditions, and report its overhead. Shell read output is retained; metadata-only file views cannot establish loaded-text cost. Native `result.usage` totals include repeated prefixes and thinking. Never pair fallback subjects with another provider's baselines. Count every subject, assessor and preflight across recorder directories against the declared cohort cap; the per-directory flag cannot enforce a cross-directory budget.
-
-Workspace skill and rule locations follow the official [skill documentation](https://www.antigravity.google/docs/skills?tab=ide) and [rule documentation](https://www.antigravity.google/docs/rules/). Keep maintenance rules separate from the distributed architecture skill and never supply evaluation rubrics to subjects.
+Antigravity global rules and skill catalogs remain cumulative across sessions, so `evaluate_agy.py` audits native tool calls (`view_file`, `read_file`, `grep_search`, `find_by_name`, `run_command`) for unauthorized skill reads and reports common prefix overhead separately. Never pair Antigravity fallback subjects with Codex CLI baselines.
 
 ## Record subjects
 
-Run from the repository root. Examples use Bash continuation syntax; in PowerShell, put each continued command on one line. Replace `STRONG` and `SMALL` with verified IDs.
+Run commands from the repository root. (Examples below use Bash `\` line continuations; in Windows PowerShell, place each command on one line or use `` ` ``.) Replace `STRONG` and `SMALL` with verified model identifiers.
 
-### 1. Freeze and measure the original
+### 1. Freeze and measure the baseline
 
 ```bash
 python tools/evaluate_skill.py snapshot --output evals/artifacts/current
@@ -72,7 +89,7 @@ python tools/evaluate_skill.py run \
   --output evals/artifacts/runs
 ```
 
-Inspect observed failures and loading traces **before changing content**. Add guidance only when it addresses a demonstrated gap.
+Inspect baseline failures and loading traces **before editing skill content**. Add guidance only to address an observed failure.
 
 ### 2. Freeze and measure the candidate
 
@@ -90,25 +107,11 @@ python tools/evaluate_skill.py run \
   --output evals/artifacts/runs
 ```
 
-Do not overwrite a snapshot. A changed skill, case or protocol needs a distinct recorded attempt.
-
-### Runner settings and budget
-
-| Setting | Default or behavior |
-|---|---|
-| Reasoning | `medium`; freeze it for comparison. |
-| Concurrency | Two processes; `--workers` supports 1–4. |
-| Timeout | 600 seconds per attempt. |
-| Budget | 94 total recorded attempts, including invalid, timeout and grader attempts. |
-| Repetition | `--repeat` records a new attempt; existing runs are never silently retried. |
-| Routing | `--base-url` preserves an existing router when user configuration is ignored; it does not add credentials. |
-| Sandbox | `read-only`; alternatives require explicit protocol selection. |
-
-Change `--limit` only for an explicitly authorized budget. Account for preflights outside the recorder separately. Preselect limited repeats for decisive wins or regressions; do not keep rerunning until a preferred answer appears.
+Never overwrite a frozen snapshot directory. Every revised skill, fixture, or protocol setting requires a distinct snapshot digest and output record.
 
 ## Grade without condition labels
 
-### 3. Prepare a blinded packet
+### 3. Build the blinded packet
 
 ```bash
 python tools/evaluate_skill.py blind \
@@ -121,9 +124,9 @@ python tools/evaluate_skill.py prepare-grading \
   --output evals/artifacts/grading.json --name grading-final
 ```
 
-Keep the key away from the assessor. The packet includes completed subjects, raw cases, rubrics, answers and available browsing traces; it withholds condition/model labels, skill content and previous scores. Answer wording may still reveal skill use.
+`blind` filters for `status == "completed"` subject records, shuffles them deterministically (`random.Random(20260930)`), assigns anonymous IDs (`answer-001`, `answer-002`, ...), attaches successful web-search or HTTP page-retrieval traces (`verification_trace`) when present, and writes the secret mapping to `key.json`.
 
-### 4. Run the assessor or supply human grades
+### 4. Run the blinded grader
 
 ```bash
 python tools/evaluate_skill.py run \
@@ -131,23 +134,17 @@ python tools/evaluate_skill.py run \
   --condition none --output evals/artifacts/runs
 ```
 
-`--batch-size` in `prepare-grading` controls assessor workload. Grader calls consume the same attempt budget. Human grades can instead use the identical schema:
+Combine the resulting JSON arrays from each grader batch into `evals/artifacts/grades.json`. Every grade object must satisfy the schema enforced by `validate_grade` in [`tools/compare_evals.py`](../tools/compare_evals.py):
 
-| Field | Requirement |
+| Grade JSON field | Validation rule in `tools/compare_evals.py` |
 |---|---|
-| `id` | The blinded answer ID. |
-| `checks` | Every rubric check exactly once, with boolean `pass` and concrete `evidence`. |
-| `unsafe_behavior` | Explicit boolean; an unsafe recommendation cannot pass. |
-| `unsupported_findings` | A string list, including an empty list when none are found. |
-| `unnecessary_components` | A string list, including an empty list when none are found. |
+| `id` | Must match the blinded `answer-NNN` ID; `grades.json` must cover `blind.json` 1:1 with no duplicates or gaps. |
+| `checks` | Must include every rubric check ID for the case once, with `pass` (`bool`) and non-empty `evidence` (`str`). |
+| `unsafe_behavior` | Explicit `bool`; `true` immediately fails the case regardless of check score. |
+| `unsupported_findings` | Explicit `list[str]` (use `[]` when none exist). |
+| `unnecessary_components` | Explicit `list[str]` (use `[]` when none exist). |
 
-Grade each answer separately. Do not reward verbosity or a technology name. Distinguish labelled proposals from fabricated facts. For provider verification, plausible URLs do not establish page retrieval: inspect the retained trace and report missing evidence.
-
-Combine the completed grader JSON arrays into `evals/artifacts/grades.json`. Do not extract grades from a failed or incomplete assessor run. Model-assisted grading is fallible; review decisive outcomes against the raw artifacts, preserve original scores and record any conservative audit adjustment separately.
-
-For external verification, the blind packet retains successful HTTP-client command output as well as browsing events. A URL or an opaque event alone is insufficient: inspect the retrieved content for the decisive claim. This evidence collection is harness instrumentation, not a skill quality gain.
-
-### 5. Validate and summarize
+### 5. Unblind, validate, and summarize
 
 ```bash
 python tools/compare_evals.py \
@@ -157,23 +154,14 @@ python tools/compare_evals.py \
   --runs evals/artifacts/runs --output evals/artifacts/comparison.json
 ```
 
-If a later trace audit excludes a subject, preserve the original packet/grades and create a filtered comparison with matching packet, key and grades. Incomplete coverage remains unknown. Do not silently reuse an earlier candidate to fill a final-snapshot gap.
-
 ## Apply the release gate
 
-A case passes only when **all critical checks**, at least **80% of all checks**, and **no unsafe behavior** are satisfied.
+A single case passes (`case_pass: true`) only when:
+1. **All critical checks pass** (`critical_failures == []`),
+2. **At least 80% of all checks pass** (`passed_checks >= ceil(0.8 * total_checks)`), and
+3. **No unsafe behavior occurs** (`unsafe_behavior == false`).
 
-| Acceptance condition | Evidence needed |
-|---|---|
-| Quality gain | A corrected hard-case failure in each model, preserved in a clean confirmation. |
-| No regression | Critical correctness, narrow tasks and the sound-system control remain sound. |
-| Context benefit | Less irrelevant loading on narrow tasks; justified depth on hard decisions. |
-| Existing behavior | Final-snapshot regression coverage, not a substitute from an older candidate. |
-| Integrity | Valid links, discovery and dependency-free distribution. |
-
-Missing grades, contaminated sessions and incomplete runs are **unknown, never passes**. Compare equivalent cases; different coverage counts are not comparable percentages. If baselines reach the ceiling, predeclare harder realistic variants before testing them. Never change the rubric after seeing candidate answers. If improvement is not demonstrated, do not claim it.
-
-After validating grades with `compare_evals.py`, check complete coverage, all candidate case outcomes, two independent hard-case confirmations per model and reduced narrow-task loading:
+Run [`tools/check_acceptance.py`](../tools/check_acceptance.py) to verify the full multi-model release gate across baseline and candidate comparisons:
 
 ```bash
 python tools/check_acceptance.py \
@@ -182,27 +170,64 @@ python tools/check_acceptance.py \
   --models STRONG SMALL --suites evals/benchmark.json evals/regression.json
 ```
 
-This checker does not replace source-hash equality, raw trace review, justified reference depth or distribution checks. Keep total attempts across subject and assessor directories within the declared cohort budget.
+| Gate enforced by `check_acceptance.py` | Exact code requirement |
+|---|---|
+| **Complete baseline coverage** | Both `none` and `current` conditions must have exactly 1 completed record per `benchmark` case for every model. |
+| **Complete candidate coverage** | `candidate` condition must cover every case in all supplied suites (`benchmark` + `regression`). |
+| **Zero candidate case failures** | Every `candidate` record across all repeats and suites must have `grade.case_pass == True`. |
+| **Repeated hard-case improvement** | For each model, at least one hard benchmark case (excluding `narrow-adr` and `sound-system`) that failed in `current` must pass in `candidate` across **at least 3 distinct repeats** (`primary + 2 confirmations`). |
+| **Narrow-task context reduction** | For each model, `narrow-adr` in `candidate` must record strictly fewer `observed_skill_read_output_words` than in `current`. |
 
-When using the harder comparison, run it under all three conditions on both models and include `evals/benchmark-hard.json` in grading and acceptance commands. Both benchmark definition files share the suite name; the acceptance checker unions their case coverage. Select confirmation cases from original failures before seeing candidate grades. If the original still passes every harder case, the gain gate is unproven; a passing candidate cannot establish an improvement by itself.
+## CLI reference and status codes
+
+### Command-line tools (`tools/*.py`)
+
+| Script & subcommand | Key arguments and defaults | Purpose |
+|---|---|---|
+| `evaluate_skill.py snapshot` | `--source` (`skills/system-design-compass`), `--output` (required) | Copies the skill tree to a frozen directory and prints its canonical LF SHA-256 digest. |
+| `evaluate_skill.py run` | `--suite`, `--models`, `--condition` (`none\|current\|candidate`), `--skill`, `--output`, `--base-url`, `--effort` (`medium`), `--workers` (`2`, range `1..4`), `--timeout` (`600`), `--repeat` (`1`), `--limit` (`94`), `--sandbox` (`read-only\|danger-full-access`), `--cases`, `--inline-fixtures`, `--retain-source-content` | Runs isolated Codex CLI turns with a file lock (`run.lock`) and per-directory trial cap. |
+| `evaluate_skill.py blind` | `--output`, `--packet`, `--key`, `--conditions`, `--suites` | Filters completed non-grader runs, shuffles with seed `20260930`, and emits `blind.json` + `key.json`. |
+| `evaluate_skill.py prepare-grading` | `--packet`, `--suites`, `--output`, `--name`, `--batch-size` (`2`, range `1..32`) | Groups blinded answers by case and builds tool-free grader prompts. |
+| `evaluate_agy.py` | `--suite`, `--models`, `--condition`, `--skill`, `--output`, `--cases`, `--repeat` (`1`), `--workers` (`2`), `--timeout` (`600`), `--limit` (`94`) | Runs Antigravity CLI turns in fresh temporary workspaces with quota-exhaustion circuit breaking. |
+| `compare_evals.py` | `--packet`, `--key`, `--grades`, `--suites`, `--runs`, `--output` | Verifies answer immutability and grade completeness, computes `case_pass`, and prints group medians. |
+| `check_acceptance.py` | `--baseline`, `--candidate`, `--models`, `--suites` | Checks the five release-gate conditions and exits non-zero listing any unmet criteria. |
+
+### Recorded run status values
+
+| Status value | Meaning and trigger in `evaluate_skill.py` / `evaluate_agy.py` | Eligible for `blind`? |
+|---|---|---|
+| `reserved` | Placeholder written before launching the CLI process to enforce `--limit`. | No |
+| `completed` | Process exited `0` (and native terminal status `SUCCESS` in `agy`) with non-empty answer and clean audits. | **Yes** |
+| `failed` | Non-zero exit code, empty answer, or missing completion event. | No |
+| `timeout` | Subprocess exceeded `--timeout` (default `600` seconds). | No |
+| `contaminated` | Command trace accessed a foreign skill path or read `SKILL.md` under `--condition none`. | No |
+| `unverified-skill-load` | Condition was `current` or `candidate`, but `SKILL.md` was never observed in tool read outputs. | No |
+| `unverified-fixture-access` | Case included disk fixtures (without `--inline-fixtures`), but `command_count == 0`. | No |
+| `workspace-mutated` | Temporary workspace SHA-256 digest changed during execution (subject created or modified files). | No |
+| `provider-error` | `evaluate_agy.py` detected a quota/rate-limit error or native terminal `ERROR` (such as HTTP `503`). | No |
+| `not-started-quota-exhausted` | Queued job skipped after an earlier worker triggered the quota circuit breaker in `evaluate_agy.py`. | No |
 
 ## Interpret the measurements
 
-| Metric | Interpretation | Limit |
+| Metric | What it measures | Known boundary |
 |---|---|---|
-| Input/output/cache tokens | Actual CLI-reported totals across the run. | Includes harness overhead and repeated prefixes; not unique context or monetary cost. |
-| Skill-read words/characters | Outputs of successful commands naming skill files. | Approximate proxy: mixed outputs can overcount and indirect reads can be missed. |
-| References and rereads | Observed command-path counts. | Shares trace limitations; not guaranteed complete. |
-| Case/check outcomes | Behavioral rubric results. | Depends on assessor accuracy and tested cases. |
+| **Input / output / cached / thinking tokens** | Aggregate CLI-reported usage totals across the cohort. | Includes harness system prompts and repeated multi-turn prefixes; not skill-only token cost. |
+| **`observed_skill_read_output_words`** | Whitespace word count of successful command outputs naming `SKILL.md` or `references/*.md`. | Approximate context proxy: mixed shell outputs can overcount, and metadata-only views do not establish loaded text. |
+| **`observed_reference_count` & `repeated_skill_reads`** | Distinct `references/*.md` files accessed and total reread count (`total_reads - distinct_files`). | A heading search (`rg '^##'`) followed by a targeted section read counts as a reread; inspect JSONL before calling it waste. |
+| **`case_pass` & `critical_failures`** | Blinded rubric grading results. | Model-assisted grading is fallible; audit decisive passes/failures against raw answers and retain original scores. |
 
-Inspect raw JSONL before making a context claim. Keep failed attempts, snapshots and hashes under ignored `evals/artifacts/`; publish a dated report with clean cohort counts, exclusions, model settings, separate usage/loading measurements and a release verdict.
+## Troubleshooting evaluation runs
+
+| Issue | Root cause | Fix |
+|---|---|---|
+| `FileExistsError: .../run.lock` | Another recorder instance is active or a previous process crashed forcibly before releasing `run.lock`. | Verify no `evaluate_skill.py` or `evaluate_agy.py` process is running, then remove the stale `run.lock` file in the output directory. |
+| `run cap exceeded` / `trial cap exceeded` | Existing `*.json` records plus requested jobs exceed `--limit` (default `94`). | Pass an explicitly authorized `--limit` value; never delete failed or contaminated records to free budget slots. |
+| Subjects fail with `unverified-fixture-access` on Windows | Windows `read-only` sandbox blocked shell commands from reading workspace files. | Re-run in a new output directory using `--sandbox danger-full-access` across all compared conditions on trusted fixtures, or pass `--inline-fixtures`. |
+| `ValueError: grades must cover the blind packet exactly once` | A grader batch truncated output or omitted an `answer-NNN` entry when building `grades.json`. | Re-run only the incomplete grader batch (`--cases batch-N --repeat 2`), preserve the failed batch record, and merge the complete JSON array. |
+| Quota exhaustion or `503 UNAVAILABLE` during `evaluate_agy.py` | Provider capacity error or account window fell to or below the `50%` stop threshold. | Check interactive `/usage` in the CLI (`agy usage` is unsupported; type `/usage` in the interactive prompt) and stop new launches at or below `50%`. |
 
 ## Method references
 
-The recorder follows the structured-trace approach in [OpenAI's skill evaluation guide](https://developers.openai.com/blog/eval-skills). Invocation isolation uses the [configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference). These references explain the method; local traces determine whether the intended isolation actually held.
-
-## Quota and transport errors
-
-Read the actual interactive CLI `/usage` panel; a model response to an inline `/usage` prompt is not quota evidence. Record remaining percentages and timestamps without account identifiers. Honor the configured stop threshold before launching a batch. The latest continuation requires stopping at or below **50%** in either Gemini window; earlier thresholds remain historical. See the [official quota command documentation](https://www.antigravity.google/docs/cli/commands/usage/).
-
-Native terminal status takes precedence over exit code or plausible response text. Preserve usage from failed native results too; never grade terminal `ERROR` as completion. Retry only an explicitly bounded transient transport failure, with a fresh ID and retained original record. Do not rerun a completed unfavorable answer. Account changes, concurrency changes and source changes must be disclosed separately.
+- Structured trace evaluation approach: [OpenAI Skill Evaluation Guide](https://developers.openai.com/blog/eval-skills)
+- Per-invocation Codex configuration flags: [Codex Configuration Reference](https://learn.chatgpt.com/docs/config-file/config-reference)
+- Antigravity workspace skills, rules, and quota panel: [Antigravity Skills Docs](https://www.antigravity.google/docs/skills?tab=ide), [Rules Docs](https://www.antigravity.google/docs/rules/), and [Usage Command Docs](https://www.antigravity.google/docs/cli/commands/usage/)
