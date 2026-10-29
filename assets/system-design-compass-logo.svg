@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#122230"/>
+      <stop offset="50%" stop-color="#0a141d"/>
+      <stop offset="100%" stop-color="#050a0f"/>
+    </linearGradient>
+
+    <!-- Center Radial Glow -->
+    <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#c47a3b" stop-opacity="0.22"/>
+      <stop offset="45%" stop-color="#172b3a" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#0a141d" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Primary Copper Needle Gradients -->
+    <linearGradient id="copperLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8b677"/>
+      <stop offset="100%" stop-color="#d97736"/>
+    </linearGradient>
+
+    <linearGradient id="copperDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c46a29"/>
+      <stop offset="100%" stop-color="#8a4111"/>
+    </linearGradient>
+
+    <!-- Titanium / Steel Counter-Needle Gradients -->
+    <linearGradient id="steelLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#557d9d"/>
+      <stop offset="100%" stop-color="#2c4b64"/>
+    </linearGradient>
+
+    <linearGradient id="steelDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e364a"/>
+      <stop offset="100%" stop-color="#101e29"/>
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="traceGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="coreGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feColorMatrix type="matrix" values="1 0 0 0 0.9  0 1 0 0 0.7  0 0 1 0 0.4  0 0 0 1 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Container Squircle -->
+  <rect width="512" height="512" rx="116" fill="url(#bgGrad)" stroke="#1e364a" stroke-width="2.5"/>
+
+  <!-- Center Atmospheric Glow -->
+  <circle cx="256" cy="256" r="215" fill="url(#centerGlow)"/>
+
+  <!-- Architectural Background Axis Grid Lines -->
+  <line x1="256" y1="44" x2="256" y2="468" stroke="#152735" stroke-width="1.5" stroke-dasharray="3 5"/>
+  <line x1="44" y1="256" x2="468" y2="256" stroke="#152735" stroke-width="1.5" stroke-dasharray="3 5"/>
+  <line x1="106" y1="106" x2="406" y2="406" stroke="#12222f" stroke-width="1.2" stroke-dasharray="2 6"/>
+  <line x1="106" y1="406" x2="406" y2="106" stroke="#12222f" stroke-width="1.2" stroke-dasharray="2 6"/>
+
+  <!-- Concentric Dial Rings -->
+  <circle cx="256" cy="256" r="186" fill="none" stroke="#213a4e" stroke-width="1.5"/>
+  <circle cx="256" cy="256" r="165" fill="none" stroke="#162938" stroke-width="1" stroke-dasharray="4 6"/>
+  <circle cx="256" cy="256" r="130" fill="none" stroke="#1c3345" stroke-width="1.5"/>
+  <circle cx="256" cy="256" r="82" fill="none" stroke="#162938" stroke-width="1" stroke-dasharray="2 4"/>
+
+  <!-- Calibration Dial Ticks -->
+  <g id="dial-ticks">
+    <line x1="442.00" y1="256.00" x2="424.00" y2="256.00" stroke="#e28743" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="441.29" y1="272.21" x2="434.32" y2="271.60" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="439.17" y1="288.30" x2="432.28" y2="287.08" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="435.66" y1="304.14" x2="426.00" y2="301.55" stroke="#3d6280" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="430.78" y1="319.62" x2="424.20" y2="317.22" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="424.57" y1="334.61" x2="418.23" y2="331.65" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="417.08" y1="349.00" x2="405.82" y2="342.50" stroke="#7aa0bd" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="408.36" y1="362.69" x2="402.63" y2="358.67" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="398.48" y1="375.56" x2="393.12" y2="371.06" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="387.52" y1="387.52" x2="380.45" y2="380.45" stroke="#3d6280" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="375.56" y1="398.48" x2="371.06" y2="393.12" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="362.69" y1="408.36" x2="358.67" y2="402.63" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="349.00" y1="417.08" x2="342.50" y2="405.82" stroke="#7aa0bd" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="334.61" y1="424.57" x2="331.65" y2="418.23" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="319.62" y1="430.78" x2="317.22" y2="424.20" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="304.14" y1="435.66" x2="301.55" y2="426.00" stroke="#3d6280" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="288.30" y1="439.17" x2="287.08" y2="432.28" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="272.21" y1="441.29" x2="271.60" y2="434.32" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="256.00" y1="442.00" x2="256.00" y2="424.00" stroke="#e28743" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="239.79" y1="441.29" x2="240.40" y2="434.32" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="223.70" y1="439.17" x2="224.92" y2="432.28" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="207.86" y1="435.66" x2="210.45" y2="426.00" stroke="#3d6280" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="192.38" y1="430.78" x2="194.78" y2="424.20" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="177.39" y1="424.57" x2="180.35" y2="418.23" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="163.00" y1="417.08" x2="169.50" y2="405.82" stroke="#7aa0bd" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="149.31" y1="408.36" x2="153.33" y2="402.63" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="136.44" y1="398.48" x2="140.94" y2="393.12" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="124.48" y1="387.52" x2="131.55" y2="380.45" stroke="#3d6280" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="113.52" y1="375.56" x2="118.88" y2="371.06" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="103.64" y1="362.69" x2="109.37" y2="358.67" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="94.92" y1="349.00" x2="106.18" y2="342.50" stroke="#7aa0bd" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="87.43" y1="334.61" x2="93.77" y2="331.65" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="81.22" y1="319.62" x2="87.80" y2="317.22" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="76.34" y1="304.14" x2="86.00" y2="301.55" stroke="#3d6280" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="72.83" y1="288.30" x2="79.72" y2="287.08" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="70.71" y1="272.21" x2="77.68" y2="271.60" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="70.00" y1="256.00" x2="88.00" y2="256.00" stroke="#e28743" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="70.71" y1="239.79" x2="77.68" y2="240.40" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="72.83" y1="223.70" x2="79.72" y2="224.92" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="76.34" y1="207.86" x2="86.00" y2="210.45" stroke="#3d6280" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="81.22" y1="192.38" x2="87.80" y2="194.78" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="87.43" y1="177.39" x2="93.77" y2="180.35" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="94.92" y1="163.00" x2="106.18" y2="169.50" stroke="#7aa0bd" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="103.64" y1="149.31" x2="109.37" y2="153.33" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="113.52" y1="136.44" x2="118.88" y2="140.94" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="124.48" y1="124.48" x2="131.55" y2="131.55" stroke="#3d6280" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="136.44" y1="113.52" x2="140.94" y2="118.88" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="149.31" y1="103.64" x2="153.33" y2="109.37" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="163.00" y1="94.92" x2="169.50" y2="106.18" stroke="#7aa0bd" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="177.39" y1="87.43" x2="180.35" y2="93.77" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="192.38" y1="81.22" x2="194.78" y2="87.80" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="207.86" y1="76.34" x2="210.45" y2="86.00" stroke="#3d6280" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="223.70" y1="72.83" x2="224.92" y2="79.72" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="239.79" y1="70.71" x2="240.40" y2="77.68" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="256.00" y1="70.00" x2="256.00" y2="88.00" stroke="#e28743" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="272.21" y1="70.71" x2="271.60" y2="77.68" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="288.30" y1="72.83" x2="287.08" y2="79.72" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="304.14" y1="76.34" x2="301.55" y2="86.00" stroke="#3d6280" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="319.62" y1="81.22" x2="317.22" y2="87.80" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="334.61" y1="87.43" x2="331.65" y2="93.77" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="349.00" y1="94.92" x2="342.50" y2="106.18" stroke="#7aa0bd" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="362.69" y1="103.64" x2="358.67" y2="109.37" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="375.56" y1="113.52" x2="371.06" y2="118.88" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="387.52" y1="124.48" x2="380.45" y2="131.55" stroke="#3d6280" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="398.48" y1="136.44" x2="393.12" y2="140.94" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="408.36" y1="149.31" x2="402.63" y2="153.33" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="417.08" y1="163.00" x2="405.82" y2="169.50" stroke="#7aa0bd" stroke-width="1.6" stroke-linecap="round"/>
+    <line x1="424.57" y1="177.39" x2="418.23" y2="180.35" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="430.78" y1="192.38" x2="424.20" y2="194.78" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="435.66" y1="207.86" x2="426.00" y2="210.45" stroke="#3d6280" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="439.17" y1="223.70" x2="432.28" y2="224.92" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+    <line x1="441.29" y1="239.79" x2="434.32" y2="240.40" stroke="#1e374c" stroke-width="1.0" stroke-linecap="round"/>
+  </g>
+
+  <!-- System Architecture Boundary Nodes & Speculative Paths -->
+  <g id="system-boundaries" opacity="0.8">
+    <path d="M 164 164 L 202 202 M 348 164 L 298 214 M 348 348 L 294 294 M 164 348 L 214 298" 
+          stroke="#1d3549" stroke-width="1.5" stroke-dasharray="3 3"/>
+    <rect x="156" y="156" width="16" height="16" rx="3.5" transform="rotate(45 164 164)" fill="#0b161f" stroke="#2a4b66" stroke-width="1.5"/>
+    <rect x="340" y="156" width="16" height="16" rx="3.5" transform="rotate(45 348 164)" fill="#0b161f" stroke="#2a4b66" stroke-width="1.5"/>
+    <rect x="340" y="340" width="16" height="16" rx="3.5" transform="rotate(45 348 348)" fill="#0b161f" stroke="#2a4b66" stroke-width="1.5"/>
+    <rect x="156" y="340" width="16" height="16" rx="3.5" transform="rotate(45 164 348)" fill="#0b161f" stroke="#2a4b66" stroke-width="1.5"/>
+  </g>
+
+  <!-- The Authoritative Copper Failure-Path Route -->
+  <g id="authoritative-route">
+    <!-- Ambient glowing under-trace -->
+    <path d="M 80 256 L 146 256 L 192 210 L 256 256" 
+          fill="none" stroke="#e28743" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.35" filter="url(#traceGlow)"/>
+    <!-- Crisp inlaid copper trace -->
+    <path d="M 80 256 L 146 256 L 192 210 L 256 256" 
+          fill="none" stroke="#f8b677" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Admission boundary ingress node -->
+    <circle cx="80" cy="256" r="6.5" fill="#f8b677" stroke="#081118" stroke-width="2.5"/>
+    <circle cx="146" cy="256" r="4.5" fill="#d97736" stroke="#081118" stroke-width="1.5"/>
+  </g>
+
+  <!-- Multi-Faceted Precision Compass Rose / Needles -->
+  <g id="compass-needles">
+    <!-- North Needle (Primary Invariant Direction) -->
+    <polygon points="256,80 241,256 256,256" fill="url(#copperDark)"/>
+    <polygon points="256,80 256,256 271,256" fill="url(#copperLight)"/>
+
+    <!-- South Needle (Counterweight Baseline) -->
+    <polygon points="256,422 241,256 256,256" fill="url(#steelDark)"/>
+    <polygon points="256,422 256,256 271,256" fill="url(#steelLight)"/>
+
+    <!-- East Needle (System Boundary) -->
+    <polygon points="422,256 256,241 256,256" fill="url(#steelLight)"/>
+    <polygon points="422,256 256,256 256,271" fill="url(#steelDark)"/>
+
+    <!-- West Needle (Input Ingress Corridor) -->
+    <polygon points="90,256 256,241 256,256" fill="url(#copperLight)"/>
+    <polygon points="90,256 256,256 256,271" fill="url(#copperDark)"/>
+  </g>
+
+  <!-- Authoritative State Hub (Center Bezel, Ivory Core, Micro-Pivot) -->
+  <g id="center-hub">
+    <!-- Outer burnished copper bezel -->
+    <circle cx="256" cy="256" r="34" fill="#070f15" stroke="#c47a3b" stroke-width="2.5"/>
+    <!-- Secondary titanium precision ring -->
+    <circle cx="256" cy="256" r="25" fill="#0d1b26" stroke="#f8b677" stroke-width="1.5"/>
+    <!-- Porcelain Ivory Core (Authoritative State Owner) -->
+    <circle cx="256" cy="256" r="15" fill="#f6f1e7" filter="url(#coreGlow)"/>
+    <!-- Central micro-pivot point -->
+    <circle cx="256" cy="256" r="5.5" fill="#172b3a"/>
+  </g>
+
+  <!-- North Cardinal Apex Diamond Marker -->
+  <polygon points="256,52 262,60 256,68 250,60" fill="#f8b677" filter="url(#traceGlow)"/>
+</svg>

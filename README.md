@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/system-design-compass-logo.png" alt="System Design Compass Logo" width="128" height="128" />
+</p>
+
 # System Design Compass
 
 ### Architecture decisions that survive the failure path.

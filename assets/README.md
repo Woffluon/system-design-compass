@@ -6,7 +6,9 @@ The README cover is an editorial illustration of architectural decision-making: 
 |---|---|
 | Active cover | [system-design-compass-hero.png](system-design-compass-hero.png) |
 | Historical baseline | [system-design-compass-hero-legacy.png](system-design-compass-hero-legacy.png) |
-| Intended use | Main README hero; reusable project launch illustration. |
+| Square logo (SVG) | [system-design-compass-logo.svg](system-design-compass-logo.svg) |
+| Square logo (PNG) | [system-design-compass-logo.png](system-design-compass-logo.png) |
+| Intended use | Main README hero, marketplace listings, and reusable project assets. |
 | Generation | Subagent `image-generator`, 2026-10-29. |
 | Visual direction | Physical Architectural Maquette 2.0: midnight navy drafting board, brushed brass and copper compass, frosted glass and ivory porcelain nodes, inlaid copper bus routes. |
 | Accessibility | Keep the descriptive README alt text and the project title as real text. |
@@ -23,3 +25,10 @@ Use case: ads-marketing. Asset type: landscape GitHub README hero for the open-s
 ## Legacy asset provenance
 
 The initial 2026-09-30 cover asset is preserved at [system-design-compass-hero-legacy.png](system-design-compass-hero-legacy.png) for historical continuity.
+
+## Skill logo specification
+
+The official square logo ([system-design-compass-logo.svg](system-design-compass-logo.svg), [system-design-compass-logo.png](system-design-compass-logo.png)) is a 512x512 squircle icon designed for marketplace listings, avatars, and documentation headers:
+- Geometry: 72 calibrated tick marks, system boundary nodes, and a faceted 4-point compass rose.
+- Palette: Midnight navy (`#122230`), burnished copper (`#d97736`, `#f8b677`), titanium steel (`#2c4b64`), and ivory porcelain core (`#f6f1e7`).
+- Theme: Visual metaphor for an authoritative failure-path route connecting system boundaries to the central state owner.
