@@ -2,7 +2,7 @@
 
 ### Architecture decisions that survive the failure path.
 
-![A precision compass on a navy architectural map, with a copper route connecting the chosen system boundaries.](assets/system-design-compass-hero.png)
+![A precision mechanical compass and tactile architectural maquette on a midnight navy drafting board with glowing copper failure-isolation paths.](assets/system-design-compass-hero.png)
 
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-compatible-172b3a)](https://agentskills.io)
 [![Version](https://img.shields.io/badge/version-1.1.0-172b3a)](skills/system-design-compass/SKILL.md)
@@ -11,77 +11,36 @@
 [![Dependencies](https://img.shields.io/badge/runtime_dependencies-0-172b3a)](#repository-structure-and-runtime-boundary)
 [![License: MIT](https://img.shields.io/badge/license-MIT-172b3a)](LICENSE)
 
-Give your coding agent a disciplined way to reason about **system design, architecture reviews, and safe migrations**. Start with the unresolved decision, name the invariant and authoritative owner, construct a violating failure sequence, and collect the evidence that separates credible options from the simple baseline.
+Give your coding agent a disciplined way to reason about **system design, architecture reviews, and safe migrations**. Instead of hand-waving abstractions, start with the unresolved decision, name the invariant and authoritative state owner, construct a concrete violating failure sequence, and prove which option is simplest and defensible.
 
-**Small entrypoint (397 words). Selective reference loading. Zero runtime dependencies.**
+**Compact 397-word entrypoint · On-demand selective reference loading · Zero runtime dependencies**
 
-[Decision lens](#a-better-question-changes-the-design) · [Architecture & routing](#how-the-skill-routes-decisions) · [Get started](#get-started) · [Reference map](#find-the-right-guide) · [Project structure](#repository-structure-and-runtime-boundary) · [Measured evidence](#measured-results-and-current-limits) · [Development & testing](#contribute-a-failure-worth-catching)
+[Quickstart](#quickstart-in-60-seconds) · [Why Compass](#why-compass-the-decision-lens) · [Routing Architecture](#how-the-skill-routes-decisions) · [Workflow Modes](#core-workflow-modes) · [Reference Directory](#on-demand-reference-directory) · [Workload Catalogs](#28-production-workload-archetypes) · [Project Structure](#repository-structure-and-runtime-boundary) · [Evaluation Evidence](#measured-results-and-current-limits) · [Verification & Dev](#development-and-verification)
 
 > [!IMPORTANT]
-> **Version `1.1.0` status and evaluation scope**
+> **Version `1.1.0` benchmark status and evaluation scope**
 >
 > On the current 397-word `1.1.0` entrypoint (`sha256: 56723ba749e5...`), all **8/8 core benchmark cases passed** (`40/44` rubric checks, `0` critical violations, `0` unsafe outcomes) on `gemini-3.8-flash-medium` under tool-free blind grading. The strict two-model release gate across both Flash versions, the 8-case regression suite, and repeated hard-case confirmations remain open from the `rc.9`/`rc.10` cohort. Read [Measured results and current limits](#measured-results-and-current-limits) and the [evaluation report](evals/results/2026-10-01.md) for the exact scope boundary.
 
-## A better question changes the design
+---
 
-Architecture advice becomes actionable when it states **where a guarantee is enforced**, **which event sequence breaks it**, and **what observable test would disprove it**.
+## Quickstart in 60 seconds
 
-| Familiar advice | The decision worth resolving |
-|---|---|
-| "Add idempotency." | What scopes the operation identity within its issuer contract, where are effect and result committed atomically, and what happens after a crash? |
-| "Use a queue." | Does completion capacity exceed retry-amplified demand after worker loss, and who intervenes when backlog age rises? |
-| "Roll back the deployment." | Can old code still read and write new data safely, and which external or unreplicated effects are already irreversible? |
-| "Shard for scale." | Which measured bottleneck requires partitioning, and does the key distribute real skewed traffic? |
-| "Modernize the architecture." | Which concrete invariant is failing today, and which sound existing decisions should remain untouched? |
-
-> [!TIP]
-> **Three reminders to bring into every architecture review:**
-> - **A timeout is an unknown outcome.** Never treat an ambiguous remote call as a clean failure before resolving external state.
-> - **Queue storage is not recovery capacity.** Backlog clearance requires net positive completion headroom above normal arrivals plus retries.
-> - **Restoring old binaries does not undo incompatible writes.** Rollback safety depends on mixed-version read and write compatibility.
-
-## How the skill routes decisions
-
-Instead of loading a monolithic prompt on every turn, the [entrypoint](skills/system-design-compass/SKILL.md) routes by the unresolved decision. Narrow Architectural Decision Records (ADRs) stay inside the 397-word entrypoint unless a decision-changing guarantee is missing; broader work loads one workflow mode and only the specific boundary or workload sections needed.
-
-```mermaid
-flowchart LR
-    classDef navy fill:#172b3a,stroke:#0d1b26,color:#f6f1e7,stroke-width:1.5px
-    classDef copper fill:#c47a3b,stroke:#8f5322,color:#ffffff,stroke-width:2px
-    classDef slate fill:#f6f1e7,stroke:#172b3a,color:#172b3a,stroke-width:1.5px
-
-    Req["User Architecture Request + Repo Evidence"]:::slate --> Entry["SKILL.md Entrypoint (397 words)"]:::copper
-
-    Entry -->|"Narrow ADR"| Narrow["Direct ADR Decision (Latency, Isolation, Retry Safety, Cost, Trigger)"]:::slate
-    Entry -->|"Broad Workflow"| Modes["Mode Guides (design / review / evolve / interview)"]:::navy
-    Entry -->|"Missing Boundary Guarantee"| Bounds["6 Boundary References (Estimation, Data/Identity, Distributed, Readiness, Formats, Validation)"]:::navy
-    Entry -->|"Workload Unknowns"| Arch["4 Archetype Catalogs (28 Numbered Topics)"]:::navy
-
-    Narrow & Modes & Bounds & Arch --> Gate["Proof & Falsification Gate (Invariant, Violating Sequence, Fault Schedule, Pass/Fail Oracle)"]:::copper
-```
-
-When evidence conflicts or correctness guarantees are uncertain, the skill enforces a four-step proof loop before committing to a recommendation:
-
-1. **Narrow the decision:** Name the critical invariant and its authoritative state owner.
-2. **Break the proposal:** Construct a concrete violating sequence (concurrency race, crash between effect and record, timeout ambiguity, stale lease holder, or conflicting migration write).
-3. **Compare against the simple baseline:** Evaluate credible options using repository facts, arithmetic checks, and primary documentation.
-4. **Define the validation oracle:** Specify the enforcement boundary, operational downside, measurable reconsideration trigger, and a fault-injection test with a pass/fail business oracle.
-
-## Get started
-
-Install the skill from GitHub using the [`skills` CLI](https://github.com/vercel-labs/skills):
+Install the skill from GitHub into your active workspace using the [`skills` CLI](https://github.com/vercel-labs/skills):
 
 ```bash
 npx skills add Woffluon/system-design-compass
 ```
 
-From a local checkout, run this command at the repository root:
+From a local repository checkout, install directly from the root:
 
 ```bash
 npx skills add .
 ```
 
-Invoke the skill explicitly when your coding agent supports named skills:
+### Invoke the skill in your coding agent
+
+When your coding agent supports named skills, trigger it directly with a concrete architectural scenario:
 
 ```text
 $system-design-compass Review this service's retry and timeout boundaries.
@@ -114,7 +73,58 @@ npx skills add Woffluon/system-design-compass \
 
 </details>
 
-## Bring a decision, not a technology shopping list
+---
+
+## Why Compass: the decision lens
+
+Architecture advice becomes actionable when it states **where a guarantee is enforced**, **which event sequence breaks it**, and **what observable test would disprove it**.
+
+| Familiar advice | The decision worth resolving |
+|---|---|
+| "Add idempotency." | What scopes the operation identity within its issuer contract, where are effect and result committed atomically, and what happens after a crash? |
+| "Use a queue." | Does completion capacity exceed retry-amplified demand after worker loss, and who intervenes when backlog age rises? |
+| "Roll back the deployment." | Can old code still read and write new data safely, and which external or unreplicated effects are already irreversible? |
+| "Shard for scale." | Which measured bottleneck requires partitioning, and does the key distribute real skewed traffic? |
+| "Modernize the architecture." | Which concrete invariant is failing today, and which sound existing decisions should remain untouched? |
+
+> [!TIP]
+> **Three reminders to bring into every architecture review:**
+> - **A timeout is an unknown outcome.** Never treat an ambiguous remote call as a clean failure before resolving external state.
+> - **Queue storage is not recovery capacity.** Backlog clearance requires net positive completion headroom above normal arrivals plus retries.
+> - **Restoring old binaries does not undo incompatible writes.** Rollback safety depends on mixed-version read and write compatibility.
+
+---
+
+## How the skill routes decisions
+
+Instead of loading a monolithic prompt on every turn, the [entrypoint](skills/system-design-compass/SKILL.md) routes by the unresolved decision. Narrow Architectural Decision Records (ADRs) stay inside the 397-word entrypoint unless a decision-changing guarantee is missing; broader work loads one workflow mode and only the specific boundary or workload sections needed.
+
+```mermaid
+flowchart LR
+    classDef navy fill:#172b3a,stroke:#0d1b26,color:#f6f1e7,stroke-width:1.5px
+    classDef copper fill:#c47a3b,stroke:#8f5322,color:#ffffff,stroke-width:2px
+    classDef slate fill:#f6f1e7,stroke:#172b3a,color:#172b3a,stroke-width:1.5px
+
+    Req["Architecture Request + Evidence"]:::slate --> Entry["SKILL.md Entrypoint (397 words)"]:::copper
+
+    Entry -->|"Narrow ADR"| Narrow["Direct ADR Decision (Latency, Isolation, Retry Safety, Cost, Trigger)"]:::slate
+    Entry -->|"Broad Workflow"| Modes["Mode Guides (design / review / evolve / interview)"]:::navy
+    Entry -->|"Missing Boundary Guarantee"| Bounds["6 Boundary References (Estimation, Data/Identity, Distributed, Readiness, Formats, Validation)"]:::navy
+    Entry -->|"Workload Unknowns"| Arch["4 Archetype Catalogs (28 Numbered Topics)"]:::navy
+
+    Narrow & Modes & Bounds & Arch --> Gate["Proof & Falsification Gate (Invariant, Violating Sequence, Fault Schedule, Pass/Fail Oracle)"]:::copper
+```
+
+When evidence conflicts or correctness guarantees are uncertain, the skill enforces a four-step proof loop before committing to a recommendation:
+
+1. **Narrow the decision:** Name the critical invariant and its authoritative state owner.
+2. **Break the proposal:** Construct a concrete violating sequence (concurrency race, crash between effect and record, timeout ambiguity, stale lease holder, or conflicting migration write).
+3. **Compare against the simple baseline:** Evaluate credible options using repository facts, arithmetic checks, and primary documentation.
+4. **Define the validation oracle:** Specify the enforcement boundary, operational downside, measurable reconsideration trigger, and a fault-injection test with a pass/fail business oracle.
+
+---
+
+## Core workflow modes
 
 | Mode | Example prompt | Deliverable |
 |---|---|---|
@@ -126,7 +136,9 @@ npx skills add Woffluon/system-design-compass \
 
 Supply the artifacts you have: source code, schemas, configuration, SLOs, incident timelines, or existing ADRs. Missing evidence is treated as an explicit unknown or conditional assumption rather than a fabricated defect. Natural-language requests can activate the skill in harnesses that support automatic discovery, though automatic activation accuracy is not claimed by the single-turn benchmark suite.
 
-## Find the right guide
+---
+
+## On-demand reference directory
 
 The [entrypoint](skills/system-design-compass/SKILL.md) links directly to 14 reference files under `skills/system-design-compass/references/`. Agents search section headings and read only the material required by the active decision.
 
@@ -141,7 +153,11 @@ The [entrypoint](skills/system-design-compass/SKILL.md) links directly to 14 ref
 | [Deliverables and diagrams](skills/system-design-compass/references/deliverables-diagrams.md) | The requester needs an ADR, RFC, migration phase table, or C4/sequence diagram. |
 | [Interview](skills/system-design-compass/references/interview.md) | Mock interview facilitation or retrospective grading is explicitly requested. |
 
-**28 numbered workload archetypes**, organized into four domain catalogs:
+---
+
+## 28 production workload archetypes
+
+Organized into four domain catalogs under `skills/system-design-compass/references/`:
 
 | Archetype catalog | Numbered topics (`1` to `28`) |
 |---|---|
@@ -151,6 +167,8 @@ The [entrypoint](skills/system-design-compass/SKILL.md) links directly to 14 ref
 | [Transactional and financial](skills/system-design-compass/references/archetypes-transactional-financial.md) | `23` Hotel reservation · `24` Real-time gaming leaderboard · `25` Payment system · `26` Digital wallet · `27` Stock exchange · `28` Ride-sharing dispatch |
 
 Catalogs expose failure modes, invariants, and discriminating questions; they are not prebuilt templates or mandatory vendor stacks.
+
+---
 
 ## Repository structure and runtime boundary
 
@@ -181,6 +199,8 @@ system-design-compass/
 └── .github/workflows/validate.yml     # CI pipeline (repo invariants, unit tests, spec check, 79-agent smoke test)
 ```
 
+---
+
 ## Measured results and current limits
 
 The [evaluation report](evals/results/2026-10-01.md) separates behavioral quality, context loading proxies, and packaging checks across frozen skill snapshots (`original`, `rc.1` through `rc.10`, and the condensed `1.1.0` entrypoint).
@@ -197,11 +217,13 @@ The [evaluation report](evals/results/2026-10-01.md) separates behavioral qualit
 > [!NOTE]
 > **Evidence boundaries:** Read-word counts measure returned tool output naming `SKILL.md` or `references/*.md`; they are context proxies rather than tokenizer counts. The [September 30 report](evals/results/2026-09-30.md) documents the earlier Codex (`gpt-5.6-sol` / `gpt-5.6-luna`) cohort and remains historical evidence for its frozen snapshot.
 
-## Contribute a failure worth catching
+---
+
+## Development and verification
 
 Useful contributions start with an anonymized architecture prompt, raw repository fixtures, a consequential failure path, and a verifiable check. Read [Contributing](CONTRIBUTING.md) for repository invariants and validation rules, [Security](SECURITY.md) for vulnerability reporting and trust boundaries, [Behavioral evaluation cases](evals/cases.md) for the 8 release scenarios, or the [Comparative evaluation protocol](evals/README.md) to run a blinded comparison.
 
-### Development and verification commands
+### Verification commands
 
 Run the full verification suite from the repository root (requires Python `3.10+` and Node.js `20+`; CI runs on Python `3.12` and Node.js `24`):
 
@@ -226,6 +248,8 @@ git diff --check
 | PowerShell multiline `\` syntax error | Bash line continuations (`\`) in documentation examples are pasted directly into Windows PowerShell. | Join multiline arguments onto a single line or replace `\` with the PowerShell backtick (`` ` ``). |
 
 </details>
+
+---
 
 ## Sources and license
 

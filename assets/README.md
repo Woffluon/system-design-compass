@@ -4,17 +4,22 @@ The README cover is an editorial illustration of architectural decision-making: 
 
 | Property | Value |
 |---|---|
-| File | [system-design-compass-hero.png](system-design-compass-hero.png) |
-| Intended use | Main README hero; reusable project illustration. |
-| Generation | Built-in `image_gen` tool, 2026-09-30. |
-| Visual direction | Navy drafting paper, ivory blocks, copper route, precision instrument. |
+| Active cover | [system-design-compass-hero.png](system-design-compass-hero.png) |
+| Historical baseline | [system-design-compass-hero-legacy.png](system-design-compass-hero-legacy.png) |
+| Intended use | Main README hero; reusable project launch illustration. |
+| Generation | Subagent `image-generator`, 2026-10-29. |
+| Visual direction | Physical Architectural Maquette 2.0: midnight navy drafting board, brushed brass and copper compass, frosted glass and ivory porcelain nodes, inlaid copper bus routes. |
 | Accessibility | Keep the descriptive README alt text and the project title as real text. |
 | Packaging | Repository asset only; excluded from the distributed skill folder. |
 
 ## Generation prompt
 
-The final image was generated with this prompt and copied into the repository without visual editing:
+The current 2.0 hero cover was generated with this prompt:
 
 ```text
-Use case: ads-marketing. Asset type: landscape GitHub README hero for the open-source project System Design Compass, a portable AI agent skill for architectural decisions. Create a distinctive premium engineering editorial cover, wide landscape about 2:1. Subject: a precision compass instrument integrated into a small architectural network: a few ivory porcelain blocks and dark brushed metal nodes connected by fine etched paths on midnight navy drafting paper. One warm copper-orange route runs through the compass and cleanly reaches an authoritative central block; the other branching routes remain restrained and pale. This is a visual metaphor for finding the simplest defensible system design, not a literal technical diagram. Style: beautifully crafted physical maquette photographed from a high three-quarter view, architectural drafting marks and subtle contour lines, tactile matte materials, controlled studio lighting, sharp tiny details, generous negative space, excellent visual hierarchy, collectible design-book cover aesthetic. Palette: midnight navy, warm ivory, restrained copper-orange. Composition: instrument near center-right with asymmetric breathing room left, image must remain readable at GitHub README width and as a thumbnail. No words, no lettering, no labels, no logos, no fake terminal windows, no characters, no robots, no brain or AI icons, no purple gradients, no neon cyberpunk. Polished, calm, purposeful, memorable.
+Use case: ads-marketing. Asset type: landscape GitHub README hero for the open-source project System Design Compass, a portable AI agent skill for architectural decisions. Create a distinctive premium engineering editorial cover, wide landscape 16:9 / 2:1. Subject: an exquisite, museum-grade physical architectural maquette photographed in an editorial studio from a high three-quarter perspective. In the center-right of the composition sits an ultra-precise mechanical navigation compass instrument, crafted from brushed warm brass and polished copper with subtle knurled thumbscrews, glass optical elements, a delicate needle, and fine micrometer vernier scales. Surrounding the compass is a tactile architectural system relief network set onto a deep midnight-navy matte drafting board with delicate blind-debossed gridlines. The network consists of a few monolithic satin ivory porcelain blocks and geometric translucent frosted glass cubes (representing system boundaries and state owners), interconnected by hairline-etched, laser-inlaid warm copper bus paths. One authoritative, glowing warm copper-orange route runs through the compass mechanism and cleanly reaches the dominant central ivory monolith, while secondary, speculative branching routes remain muted, pale, and frosted. Style: beautifully crafted physical maquette photographed from a high three-quarter view, tactile matte materials, controlled cinematic studio lighting, sharp tiny details, generous negative space on the upper left. Palette: midnight navy, warm ivory, brushed brass, restrained copper-orange. No words, no lettering, no labels, no logos, no fake terminal windows, no characters, no robots, no brain or AI icons, no purple gradients, no neon cyberpunk. Polished, calm, purposeful, memorable.
 ```
+
+## Legacy asset provenance
+
+The initial 2026-09-30 cover asset is preserved at [system-design-compass-hero-legacy.png](system-design-compass-hero-legacy.png) for historical continuity.
