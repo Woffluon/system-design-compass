@@ -13,17 +13,17 @@ metadata:
 
 ## Route by the unresolved decision
 
-For narrow decisions, use supplied facts and this entrypoint. Read references only for missing decision-changing guarantees.
+Narrow decisions: use supplied facts and this entrypoint. Read references only for missing decision-changing guarantees.
 
 An ADR records latency/isolation, visible completion, retry safety, cost, and reconsideration triggers. Label proposed thresholds.
 
 Broad work: open [design](references/design.md), [review](references/review.md), [evolution](references/evolve.md), or requested [interview](references/interview.md). Search decisive sections; avoid bulk rereads.
 
-Unresolved boundary references:
+Boundary references:
 
 - SLOs, demand, units: [estimation](references/requirements-estimation.md).
 - Authorization, retry identity, atomicity, external outcomes: [interfaces/data](references/interfaces-data.md).
-- Provider-backed financial state: read the [resolution mechanism](references/interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction) for reconciliation and stuck-intent repair.
+- Provider-backed financial state: read [resolution mechanism](references/interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction) for statement/settlement reconciliation, reversals, and stuck-intent repair.
 - Replication, queues, leases, overload: [distributed systems](references/distributed-systems.md).
 - Recovery, security, observability, cost: [production readiness](references/production-readiness.md).
 - Formats: [deliverables](references/deliverables-diagrams.md).
@@ -36,17 +36,17 @@ Workload unknowns: [platform](references/archetypes-foundations-platform.md), [r
 Deepen for conflicting evidence, unexplained guarantees, unclear atomicity, or stalled reasoning:
 
 1. Narrow the decision; name the invariant and authoritative owner.
-2. Construct a violating event sequence: concurrency, crash, timeout, stale owner, or conflicting write.
+2. Construct a violating event sequence: concurrency, crash-after-effect, timeout, stale-owner, or conflicting write.
 3. Compare credible options against the simple baseline with evidence.
 4. State mechanism, enforcement boundary, downside, and reconsideration trigger.
 
 Apply proofs to uncertain correctness guarantees; property names are insufficient:
 
 - Sensitive state: actor/resource authorization, retry identity within issuer contract, atomic effect/result. Caller keys cannot become tenant-wide identities. Resolve external ambiguity and recovery.
-- Ownership transfer: resolve admitted writes before capture; progress means durable apply. Drill old-code reads **and writes**. Unreplicated writes break fallback before irreversible feature effects.
+- Ownership transfer: resolve admitted writes before capture; progress means durable apply and zero-traffic contraction. Drill old-code reads **and writes**. Unreplicated writes break fallback before irreversible feature effects.
 - Ambiguity/backlog: repair owner, intervention condition, and action; exhaustion is not completion.
 
-Guarantees require a concrete fault schedule and observable pass/fail oracle; counterexamples are not validation. Queue burst/retry capacity variables derive from inputs; unknown throughput requires measurement. Test burst, worker loss, and recovery. Migration tests restart/repair and mixed-version reads/writes.
+Guarantees require a concrete fault schedule and observable pass/fail oracle; counterexamples are not validation. Queue burst/retry capacity variables derive from inputs; unknown throughput requires measurement. Test burst, worker-loss, and recovery. Migration tests restart/repair and mixed-version reads/writes.
 
 ## Evidence discipline
 
