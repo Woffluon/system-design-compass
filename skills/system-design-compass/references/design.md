@@ -24,7 +24,7 @@ Define actors, external systems, trust boundaries, core journeys, and non-goals.
 
 ### 2. Make quality attributes measurable
 
-Prioritize quality attributes and translate vague terms ("fast," "reliable," "real time") into SLIs, targets, measurement points, windows, and RTO/RPO using [requirements and estimation](requirements-estimation.md).
+Prioritize quality attributes and translate vague terms ("fast," "reliable," "real time") into SLIs, targets, measurement points, windows, and RTO/RPO using the `requirements-estimation.md` guide (routed from `SKILL.md`).
 
 ### 3. Estimate decision-driving demand
 
@@ -32,7 +32,7 @@ Estimate peak read/write/event rates, concurrency, payload size, retention, stor
 
 ### 4. Define contracts, invariants, and consistency boundaries
 
-Specify commands, queries, events, lifecycle transitions, authorization scope, and idempotency identity. State which transitions require atomic or strong enforcement by the authoritative state owner and where bounded staleness is acceptable. Use [interfaces and data](interfaces-data.md).
+Specify commands, queries, events, lifecycle transitions, authorization scope, and idempotency identity. State which transitions require atomic or strong enforcement by the authoritative state owner and where bounded staleness is acceptable (see `interfaces-data.md` via `SKILL.md`).
 
 ### 5. Start from the simplest sufficient baseline
 
@@ -51,13 +51,16 @@ For each consequential choice:
 
 Connect every technology choice to a requirement. Never claim horizontal scalability without naming the partition key, coordination point, and state movement behavior.
 
+- **Weak:** "Add Redis cache and Kafka to scale bookings."
+- **Violating sequence:** "Two concurrent requests read `available = 1`, both pass the check, and both charge and book; serialize with conditional `UPDATE ... WHERE available >= qty` at the reservation owner."
+
 ### 7. Design for failure, overload, and recovery
 
-Walk through dependency timeouts, overload, partial failure, data corruption, zone/region loss, bad deployment, credential compromise, and operator error. Define degraded behavior, retry ownership, backpressure or shedding, repair ownership, observability, and escalation using [production readiness](production-readiness.md).
+Walk through dependency timeouts, overload, partial failure, data corruption, zone/region loss, bad deployment, credential compromise, and operator error. Define degraded behavior, retry ownership, backpressure or shedding, repair ownership, observability, and escalation using `production-readiness.md` (via `SKILL.md`).
 
 ### 8. Define safe delivery and rollback boundaries
 
-Separate the target architecture from the smallest safe next slice. Specify interface compatibility, data migration, shadow or canary verification, quantitative abort thresholds, and an executable rollback action using [evolution](evolve.md). A feature flag or canary without a verified state and external-effect rollback boundary does not explain recovery from a bad deployment.
+Separate the target architecture from the smallest safe next slice. Specify interface compatibility, data migration, shadow or canary verification, quantitative abort thresholds, and an executable rollback action using `evolve.md` (via `SKILL.md`). A feature flag or canary without a verified state and external-effect rollback boundary does not explain recovery from a bad deployment.
 
 ## Match deliverable format to decision scope
 
@@ -66,7 +69,7 @@ Separate the target architecture from the smallest safe next slice. Specify inte
 - **Full RFC**: multiple interfaces, data boundaries, quality attributes, or teams.
 - **Decision-complete implementation plan**: execution handoff.
 
-See [deliverables and diagrams](deliverables-diagrams.md) for contracts. Omit sections that do not change a decision; never omit a critical invariant, violating sequence, major risk, or verification method for brevity.
+Follow `deliverables-diagrams.md` (via `SKILL.md`) for format contracts. Omit sections that do not change a decision; never omit a critical invariant, violating sequence, major risk, or verification method for brevity.
 
 ## Completion gate
 

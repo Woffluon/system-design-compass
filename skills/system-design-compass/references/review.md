@@ -16,7 +16,7 @@ Report source conflicts directly. Separate demonstrated facts, conditional assum
 
 ## Trace critical paths and authoritative state owners
 
-Map the minimum flows answering the review question:
+In large repositories (`500+` files), start with scoped search (`rg`) targeting entrypoints, schemas, retry/client wrappers, and deployment config rather than reading every file. Map the minimum flows answering the review question:
 
 - External request from entry point to response.
 - State mutation through persistence, authoritative ownership, and downstream effects.
@@ -57,7 +57,10 @@ Every finding requires:
 | **Recommendation** | **the smallest surgical fix** removing or bounding the risk without unnecessary components. |
 | **Validation** | **a falsifiable experiment**—fault schedule, concurrency test, query, or load check with a pass/fail oracle. |
 
-Consolidate findings sharing a root cause. Distinguish demonstrated defects from conditional risks and open unknowns.
+Consolidate findings sharing a root cause. Distinguish demonstrated defects from conditional risks and open unknowns. For narrow single-boundary reviews, report only applicable fields and omit unused template boilerplate.
+
+- **Weak:** "Title: Retry bug. Fix: Introduce Temporal workflow. Validation: Add unit tests."
+- **Surgical:** "Title: Post-charge crash duplicates Stripe debits (`orders/pay.py:42`). Fix: Persist `IN_FLIGHT` intent + deterministic `idempotency_key` before HTTP call. Validation: Drop socket after PSP `200 OK`, retry 3x; pass iff PSP charges = 1 and local postings = 1."
 
 ## Deliver a verdict that preserves sound decisions
 
@@ -70,3 +73,7 @@ Summarize:
 - Explicit unknowns and conditional assumptions requiring telemetry, stakeholder input, or falsifiable experiments.
 
 When no actionable defect exists, state the design is sound and cite reviewed evidence. Never manufacture findings.
+
+## Completion gate
+
+A review is ready when every finding cites verified artifacts or labeled assumptions, every correctness/reliability defect includes a violating event sequence, each fix is the smallest surgical change with a pass/fail oracle, sound decisions are explicitly preserved, and missing documentation is labeled unknown rather than reported as a defect.

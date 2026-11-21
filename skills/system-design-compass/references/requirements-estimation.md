@@ -4,16 +4,7 @@
 
 ## Turn goals into requirements
 
-Separate user and business outcomes into:
-
-- **Functional requirements:** observable journeys, commands, queries, integrations, and administrative actions.
-- **Quality attributes:** measurable behavior under a stated condition.
-- **Constraints:** fixed deadlines, skills, vendors, protocols, jurisdictions, budgets, and legacy contracts.
-- **Non-goals:** plausible scope intentionally excluded.
-
-Prioritize each item as critical, important, or optional; if everything is highest priority, no trade-off can be made.
-
-Express critical quality attributes as a six-field scenario:
+Prioritize functional journeys, measurable quality attributes, fixed constraints, and explicit non-goals as critical, important, or optional; if everything is highest priority, no trade-off can be made. Express critical quality attributes as a six-field scenario:
 
 | Field | Question |
 |---|---|
@@ -46,30 +37,17 @@ allowed_bad_events = eligible_events × allowed_bad_fraction
 
 Ground SLOs in user harm, business cost, dependency limits, and staffing rather than habit.
 
-State stateful recovery objectives per failure scope (process, node, zone, region, provider, corruption, operator error):
-
-| Recovery objective | Definition |
-|---|---|
-| **RTO** | Maximum acceptable time to restore service capability. |
-| **RPO** | Maximum acceptable data-loss age from disruption onset. |
+State stateful RTO and RPO targets per failure scope (process, node, zone, region, provider, corruption, operator error).
 
 ## Estimate only decision-driving quantities
 
-State input variables explicitly, apply dimensional analysis, and separate average from peak:
-
-```text
-average_rate_per_second = events_per_period / seconds_per_period
-peak_rate = average_rate_per_second × peak_factor
-concurrency ≈ arrival_rate_per_second × average_time_in_system_seconds
-raw_storage = records × average_record_bytes
-retained_storage = ingest_rate_bytes_per_second × retention_seconds
-effective_storage = raw_storage × replication_or_erasure_overhead × index_factor
-network_rate = messages_per_second × average_payload_bytes
-```
+State input variables explicitly, apply dimensional analysis, and separate average from peak.
 
 ### Derive peak attempt demand and backlog drain under duplicates and retries
 
 Derive queue and worker math from supplied input variables. **Do not invent unmeasured worker concurrency, service latency, or per-worker throughput:** when a numeric drain time or worker count depends on an unmeasured latency, timeout, or concurrency limit, keep the formula symbolic in terms of the unknown variable, bound it as an explicit assumption range, or require measurement before claiming capacity sufficiency.
+
+When a stated worker rate is ambiguous between raw attempts and successful completions while failed attempts consume full worker time, treat the rate as **raw attempt capacity** (conservative primary baseline) and note the optimistic alternative in one line instead of duplicating full calculations.
 
 Expand unique arrivals by duplicate deliveries and retry amplification:
 
@@ -89,13 +67,21 @@ attempt_queue_growth = new_job_arrivals + duplicate_arrivals + retry_returns - a
 
 Do not add retry returns after already discounting attempt capacity to net successful completions; that counts failures twice. During overload, demanded attempts exceed executed attempts.
 
-Subtract the stated worker/zone failure allowance before computing degraded drain capacity:
+Subtract the stated worker/zone failure allowance before computing degraded drain capacity (canonical recovery inequality: `completion_rate > arrival_rate + retry_rate`):
 
 ```text
 available_workers = provisioned_workers × (1 - failure_allowance)
 degraded_attempt_capacity = available_workers × per_worker_attempt_rate
+completion_rate > arrival_rate + retry_rate
+net_drain_rate = completion_rate - (arrival_rate + retry_rate)
 net_attempt_drain_rate = degraded_attempt_capacity - (arrival_rate + duplicate_rate + retry_rate)
 time_to_clear_backlog = attempt_backlog / net_attempt_drain_rate
+```
+
+Verify drain and capacity arithmetic with a one-line stdlib check before finalizing:
+
+```bash
+python -c "cap=W*(1-loss)*r; dem=arr*(1+dup)*(1+ret); print(f'cap={cap:.1f}/s dem={dem:.1f}/s net={cap-dem:.1f}/s')"
 ```
 
 (Equivalently, in unique-job terms: `net_job_drain_rate = degraded_success_capacity - unique_arrival_rate` and `time_to_clear_backlog = unique_job_backlog / net_job_drain_rate`.) Drain time is unbounded whenever degraded completion capacity does not strictly exceed sustained arrivals plus retries. Recompute proposed remedies under the same degraded failure scenario and reconcile summary totals with this flow balance.

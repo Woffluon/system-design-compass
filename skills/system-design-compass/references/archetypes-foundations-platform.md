@@ -2,6 +2,8 @@
 
 > Expose decisions, authoritative state owners, and failure boundaries before selecting products.
 
+**Contents:** [1. Scaling](#1-scaling-from-one-service-to-large-traffic) · [2. Estimation](#2-back-of-the-envelope-estimation) · [3. Framework](#3-system-design-framework) · [4. Rate limiter](#4-rate-limiter) · [5. Consistent hashing](#5-consistent-placement-and-hashing) · [6. Distributed KV](#6-distributed-key-value-store) · [7. Unique IDs](#7-unique-identifier-generation)
+
 ---
 
 ## 1. Scaling from one service to large traffic
@@ -38,17 +40,7 @@
 
 ## 3. System design framework
 
-**Use when:** a request is broad, ambiguous, or risks becoming an ungrounded component list.
-
-**Decisive questions:** Which decision and audience does this serve? Which journeys and SLOs dominate? Who owns each mutable state? Which constraints are fixed vs assumed?
-
-> **Invariant:** every component traces to an invariant, authoritative owner, requirement, or explicit risk boundary.
-
-**Scale axes:** traffic, data, teams, ownership boundaries, release cadence, operational maturity, migration horizon.
-
-**Failure prompts:** premature decomposition, unprioritized NFR lists, missing authoritative owner, happy-path diagrams, unproven guarantees lacking a fault schedule or test oracle.
-
-**Trade-offs:** breadth vs depth. Cover lifecycle briefly; spend depth on contested invariants, violating event sequences, and simple baselines.
+**Use when:** a request is broad, ambiguous, or risks becoming an ungrounded component list. Follow the full [design workflow](design.md) (routed from `SKILL.md`): trace every component to a requirement, invariant, authoritative state owner, violating event sequence, and fault oracle rather than listing products.
 
 ---
 

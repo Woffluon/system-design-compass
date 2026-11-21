@@ -2,6 +2,8 @@
 
 > Define system contracts, state ownership, correctness boundaries, and schema evolution.
 
+**Contents:** [Invariants](#start-from-business-invariants) · [Authorization boundary](#authorization-is-part-of-the-state-boundary) · [Sync vs async](#choose-interaction-semantics) · [API contracts](#api-contract-checklist) · [Retry identity](#make-retry-identity-enforceable) · [External outcomes](#resolve-an-external-outcome-before-retry-or-correction) · [Event contracts](#event-contract-checklist) · [Data ownership](#model-data-around-ownership-and-access) · [Consistency](#state-consistency-explicitly) · [Lifecycle](#design-the-data-lifecycle) · [Validation](#validate-contracts)
+
 ## Start from business invariants
 
 List properties that must hold under concurrency, retries, partial failure, and migration (e.g., one active reservation per resource/interval, ledger conservation, monotonic versions, tenant isolation, or at-most-one external effect per idempotent command).
@@ -58,7 +60,7 @@ Open this section for external side effects (payments, payouts, outbound HTTP we
 
 **Crash window (`crash after remote success before local record`):** the remote call (payment charge, payout, or HTTP webhook) succeeds at the external endpoint, and the worker crashes or times out before recording the local state transition or broker acknowledgement. Neither a local transaction nor an outbox atomically joins an independent provider's commit. Retrying under a new key duplicates the remote effect; marking the attempt failed releases funds or state already committed remotely.
 
-Persist the authorized intent and stable provider idempotency key before invoking the external endpoint. Keep the outcome unknown (`pending_resolution`) until resolved, and atomically bind the provider object and terminal status to a unique local posting:
+Persist the authorized intent and stable provider idempotency key before invoking the external endpoint. Keep the outcome unknown (`IN_FLIGHT (pending_resolution)`) until resolved, and atomically bind the provider object and terminal status to a unique local posting:
 
 1. **Out-of-order and duplicate webhooks:** verify provider signatures and account binding, then apply a monotonic state machine so delayed non-terminal events cannot regress settled state and duplicate callbacks become no-ops.
 2. **External statement and settlement reconciliation (beyond API polling):** point-in-time API status polling alone is insufficient because provider query retention expires, callbacks drop or reorder, and asynchronous captures, settlement failures, or chargebacks occur after polling. Reconcile external settlement statements against the local ledger on a schedule, routing unmatched charges, missing settlements, or amount discrepancies to an owned repair queue.

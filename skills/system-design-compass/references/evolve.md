@@ -60,9 +60,12 @@ For every phase record:
 
 Keep rollback within the verified compatibility window. Returning to old code unable to both **read and write** data mutated during the phase is not a rollback.
 
+- **Weak:** "Phase 2: Migrate writes; roll back on Day 7 if errors rise."
+- **Executable:** "Phase 2 (10% cohort, 48h): abort if error rate > 0.5% or capture lag > 30s (`Proposed`); roll back via old-binary read/write routing before irreversible PSP capture; contract old column only after 0 legacy reads/writes."
+
 ### Drill mixed-version reads and writes before promotion
 
-Before promoting a stateful phase, execute a **mixed-version rollback drill**: write new-format data and pending work with the new version, restore compatible old code/routing, and verify old binaries **read and write** those records without data loss, silent corruption, or duplicate external effects. Check semantic meaning and schema decoding. State the point of no return where irreversible external effects or unreplicated target writes close rollback, and test forward repair or reverse sync beyond it. A planned drill blocks release until pass evidence exists.
+Before promoting a stateful phase, verify old binaries read **and write** new-format records cleanly and state the point of no return (forward repair or reverse sync beyond irreversible external effects) per the canonical [mixed-version rollback drill](decision-validation.md#migration-restart-repair-and-mixed-version-drills).
 
 ## Control operational risk and blast radius
 
@@ -81,3 +84,7 @@ Drop old columns, schemas, reads, writes, credentials, routes, jobs, flags, or s
 - Satisfied backup restore, retention, deletion, legal-hold, and audit obligations.
 
 Finish by updating ownership and architecture records, naming an owner and deadline for deferred cleanup.
+
+## Completion gate
+
+A migration plan is ready when invariants hold throughout every phase, cutover drains in-flight writes before enabling target writes, abort thresholds are quantitative (`Proposed` if unsupplied), the last safe rollback point precedes irreversible effects (with forward repair beyond it), and schema/system contraction gates on measured zero legacy traffic rather than a calendar date.

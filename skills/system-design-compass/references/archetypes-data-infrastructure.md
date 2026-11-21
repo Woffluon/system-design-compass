@@ -12,9 +12,9 @@
 
 **Scale axes:** messages/bytes/s, partitions, producers, consumer groups, retry multiplier under faults, backlog drain rate, replication.
 
-**Failure prompts:** broker/leader loss, unclean election, producer duplicate, **crash after remote side-effect or delivery success before local offset/record commit**, poison loop, slow consumer head-of-line block, rebalance storm, unowned DLQ exhaustion.
+**Failure prompts:** broker/leader loss, unclean election, producer duplicate, post-effect ack/offset loss, poison loop, slow consumer head-of-line block, rebalance storm, unowned DLQ exhaustion.
 
-**Trade-offs:** append log (offset replay, partition order) vs work queue (visibility lease/ack); quorum vs leader ack. Close the **crash-after-remote-success-before-record** window by persisting pre-call intent state and enforcing downstream idempotency keys or outcome queries before retry. Size **completion capacity for peak ingress times retry multiplier** plus backlog drain, and define an **owned DLQ/exhaustion repair path** (owner, alert threshold, replay/purge action—exhaustion is not completion).
+**Trade-offs:** append log (offset replay, partition order) vs work queue (visibility lease/ack); quorum vs leader ack. Close the post-effect crash window via pre-call intent state and [external-outcome resolution](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction); size degraded completion above retry-multiplied demand ([estimation](requirements-estimation.md#derive-peak-attempt-demand-and-backlog-drain-under-duplicates-and-retries)) with an owned DLQ repair path ([backlog drain](distributed-systems.md#backlog-drain-capacity-and-age-triggered-intervention)).
 
 ---
 
@@ -40,13 +40,13 @@
 
 **Scale axes:** events/s, campaign keys, window state bytes, hot-key skew, retained raw events, replay throughput.
 
-**Failure prompts:** duplicate/fabricated clicks, **worker crash after external sink write before checkpoint commit**, hot campaign skew, late batch after window close, partial checkpoint, double-applied correction.
+**Failure prompts:** duplicate/fabricated clicks, sink write committed before checkpoint save, hot campaign skew, late batch after window close, partial checkpoint, double-applied correction.
 
-**Trade-offs:** immutable raw log plus idempotent stream checkpointing (atomic state + offset commit or deterministic window-ID overwrite) vs batch recalculation; exact distinct sets vs sketches for non-billing views. Preserve raw events and emit adjustment ledger entries rather than mutating closed windows.
+**Trade-offs:** immutable raw log plus idempotent stream checkpointing (atomic state + offset commit or deterministic window-ID overwrite; resolve external sink ambiguity per [external-outcome resolution](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction)) vs batch recalculation; exact distinct sets vs sketches for non-billing views. Preserve raw events and emit adjustment ledger entries rather than mutating closed windows.
 
 ---
 
-## 23. Distributed email service
+## 22. Distributed email service
 
 **Critical questions:** send/receive scope, DKIM/SPF/DMARC authority, IP reputation, mailbox model, attachments, search, spam/bounce suppression, retention.
 
@@ -54,13 +54,13 @@
 
 **Scale axes:** messages/s, recipient fan-out, attachment bytes, domains/IP pools, mailbox sessions, search shards, retry queue depth.
 
-**Failure prompts:** **crash after remote SMTP `250 OK` before local delivery record commit** causing duplicate send, ambiguous SMTP timeout, bounce loop, shared-IP blacklist contamination, malicious attachment, mailbox/index drift, unowned DLQ backlog.
+**Failure prompts:** crash after remote SMTP `250 OK` before local delivery commit, ambiguous SMTP timeout, bounce loop, shared-IP blacklist contamination, malicious attachment, mailbox/index drift, unowned DLQ backlog.
 
-**Trade-offs:** durable pre-send record (`IN_FLIGHT` with deterministic `Message-ID`) before remote SMTP send; transactional vs bulk IP pool isolation; blob attachments with metadata log; derived search. Size workers for **completion capacity under SMTP retry multipliers**, and assign an **owned DLQ/exhaustion repair path** for terminal failures.
+**Trade-offs:** durable `IN_FLIGHT` pre-send record with deterministic `Message-ID` ([external-outcome resolution](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction)); transactional vs bulk IP pool isolation; blob attachments with metadata log; derived search. Size workers for retry-multiplied completion capacity ([estimation](requirements-estimation.md#derive-peak-attempt-demand-and-backlog-drain-under-duplicates-and-retries)) and assign an owned DLQ repair path ([backlog drain](distributed-systems.md#backlog-drain-capacity-and-age-triggered-intervention)).
 
 ---
 
-## 24. Object storage
+## 23. Object storage
 
 **Critical questions:** size distribution, immutability/versioning, consistency, multipart commit contract, listing, durability target, legal hold, erasure coding vs replication.
 

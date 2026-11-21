@@ -10,7 +10,7 @@ For every critical path specify:
 
 - End-to-end deadline and per-hop timeout budget.
 - Retry owner, retryable conditions, attempt/elapsed-time cap, and jitter.
-- Ambiguous-completion handling: idempotency key, outcome query, or reconciliation. **Retry exhaustion is not completion; exhausted attempts require an owned repair path.**
+- Ambiguous-completion handling: idempotency key, outcome query, or reconciliation with an owned repair path on retry exhaustion.
 - Capacity during replica/zone loss and subsequent recovery load.
 - Tenant, priority, and failure-domain isolation boundaries.
 - Degraded mode and invariants that remain enforced.
@@ -43,12 +43,10 @@ Every alert requires a user-impacting or invariant-violating condition, a **quan
 
 Classify data and map actors, assets, trust boundaries, entry points, privileged actions, and third parties. Threat-model actual flows:
 
-1. Decompose components and trust boundaries.
-2. Identify spoofing, tampering, repudiation gaps, disclosure, denial of service, and privilege escalation.
-3. Rank by likelihood and business impact.
-4. Bind preventive, detective, and recovery controls to each high-risk path; record residual risk and verification tests.
+1. Decompose components and trust boundaries, then rank threats by likelihood and business impact.
+2. Bind preventive, detective, and recovery controls to each high-risk path; record residual risk and verification tests.
 
-Cover authentication, resource-level authorization, tenant isolation, workload identity, secret rotation, encryption in transit/at rest, immutable audit logs, dependency provenance, input validation, egress control, break-glass access, and incident response.
+Enforce resource-level authorization, tenant isolation, workload identity, secret rotation, encryption in transit/at rest, immutable audit logs, input validation, egress control, and break-glass auditing across boundaries.
 
 Map supplied privacy or regulatory obligations (minimization, retention/deletion, residency, export, subject access) to concrete stores, flows, evidence, and owners without inventing compliance certifications.
 

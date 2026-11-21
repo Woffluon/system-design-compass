@@ -1,55 +1,48 @@
 ---
 name: system-design-compass
-description: Resolve architecture decisions in production system design, reviews, migrations, and scaling. Use for RFCs, ADRs, architecture assessments, migration plans, or system design interviews. Excludes routine implementation without an architectural decision.
+description: Resolves architecture decisions for new or production system design, code-backed reviews, zero-downtime migrations, and scaling. Use when asked to write an RFC or decision record (ADR), compare async queues vs. sync calls, design idempotency, payment/ledger or lease boundaries, plan cutover/rollback phases, review reliability/tail-latency risks, or run a system design interview. Excludes routine coding, UI/UX design systems, local refactoring, CI/tooling bumps, or pure SQL/algorithm tuning without an architectural boundary.
 license: MIT
 metadata:
   author: Woffluon
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # System Design Compass
 
-> Choose the simplest sufficient design, preserve sound decisions and respond in the user's language.
+> Simplest sufficient design; preserve sound decisions; respond in user's language while keeping canonical engineering terms clear.
+
+## When not to use
+
+Skip for single-file bug fixes, UI/CSS, syntax, CI bumps, or settled CRUD; answer directly.
 
 ## Route by the unresolved decision
 
-Narrow decisions: use supplied facts and this entrypoint. Read references only for missing decision-changing guarantees.
+Narrow decisions (default ADR, ~200–400 words): use supplied facts; open references only for missing guarantees. Record latency/isolation, completion, retry safety, cost, `Proposed` triggers.
 
-An ADR records latency/isolation, visible completion, retry safety, cost, and reconsideration triggers. Label proposed thresholds.
+Broad/mixed work: **Review -> Design -> Evolve** via [review](references/review.md), [design](references/design.md), [evolution](references/evolve.md), or [interview](references/interview.md). Scan `##` headings first; read matching sections (>50% for full read):
 
-Broad work: open [design](references/design.md), [review](references/review.md), [evolution](references/evolve.md), or requested [interview](references/interview.md). Search decisive sections; avoid bulk rereads.
-
-Boundary references:
-
-- SLOs, demand, units: [estimation](references/requirements-estimation.md).
-- Authorization, retry identity, atomicity, external outcomes: [interfaces/data](references/interfaces-data.md).
-- Provider-backed financial state: read [resolution mechanism](references/interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction) for statement/settlement reconciliation, reversals, and stuck-intent repair.
-- Replication, queues, leases, overload: [distributed systems](references/distributed-systems.md).
-- Recovery, security, observability, cost: [production readiness](references/production-readiness.md).
-- Formats: [deliverables](references/deliverables-diagrams.md).
-- Falsification, repair: [decision validation](references/decision-validation.md).
-
-Workload unknowns: [platform](references/archetypes-foundations-platform.md), [realtime](references/archetypes-user-facing-realtime.md), [infrastructure](references/archetypes-data-infrastructure.md), [transactional](references/archetypes-transactional-financial.md).
+- Demand/SLOs: [estimation](references/requirements-estimation.md); readiness: [production readiness](references/production-readiness.md).
+- Auth, retry, external outcomes: [interfaces/data](references/interfaces-data.md) ([auth](references/interfaces-data.md#authorization-is-part-of-the-state-boundary), [reconcile](references/interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction)).
+- Queues/overload: [distributed systems](references/distributed-systems.md#backlog-drain-capacity-and-age-triggered-intervention); drills: [decision validation](references/decision-validation.md#migration-restart-repair-and-mixed-version-drills).
+- Full RFC/review/migration/diagram formats (skip for narrow ADRs): [deliverables](references/deliverables-diagrams.md).
+- Workloads: [platform](references/archetypes-foundations-platform.md) (scale, limit, hash, KV, IDs), [realtime](references/archetypes-user-facing-realtime.md) (feed, chat, notify, search, video, sync, geo/nearby), [infrastructure](references/archetypes-data-infrastructure.md) (queues, metrics, clicks, email, object), [transactional](references/archetypes-transactional-financial.md) (reserve, rank, pay, wallet, exchange).
 
 ## Break the proposal before committing
 
-Deepen for conflicting evidence, unexplained guarantees, unclear atomicity, or stalled reasoning:
+1. Narrow decision; name invariant and authoritative owner.
+2. Build violating sequence (race, crash-after-effect, timeout, stale owner, conflict).
+3. Compare options vs. baseline with evidence.
+4. State mechanism, boundary, downside, trigger.
+5. Add fault schedule + pass/fail oracle (queues: burst/loss/drain; side effects: crash/timeout/overlap; migrations: restart/repair, mixed-version reads/writes), because names leave bugs untested.
 
-1. Narrow the decision; name the invariant and authoritative owner.
-2. Construct a violating event sequence: concurrency, crash-after-effect, timeout, stale-owner, or conflicting write.
-3. Compare credible options against the simple baseline with evidence.
-4. State mechanism, enforcement boundary, downside, and reconsideration trigger.
+- Sensitive state: enforce auth + scoped retry ID before mutating/returning (avoids collisions); reconcile external outcomes.
+- Ownership: drain admitted writes and drill old reads/writes before irreversible effects; gate contraction on zero legacy traffic, not dates (avoids split corruption).
+- Backlog: size completion > arrivals + retries with owned repair (storage/exhaustion never drains).
 
-Apply proofs to uncertain correctness guarantees; property names are insufficient:
+## Evidence and pre-output check
 
-- Sensitive state: actor/resource authorization, retry identity within issuer contract, atomic effect/result. Caller keys cannot become tenant-wide identities. Resolve external ambiguity and recovery.
-- Ownership transfer: resolve admitted writes before capture; progress means durable apply and zero-traffic contraction. Drill old-code reads **and writes**. Unreplicated writes break fallback before irreversible feature effects.
-- Ambiguity/backlog: repair owner, intervention condition, and action; exhaustion is not completion.
+Inspect user code/schemas/config/docs before asking (exclude harness/skill metadata); trust running code over docs and report mismatches. Ask <=3 questions only for missing boundary facts; without interaction, use labeled `[Assumption]`s/unknowns (omit on complete narrow inputs).
 
-Guarantees require a concrete fault schedule and observable pass/fail oracle; counterexamples are not validation. Queue burst/retry capacity variables derive from inputs; unknown throughput requires measurement. Test burst, worker-loss, and recovery. Migration tests restart/repair and mixed-version reads/writes.
+Tool-check math; verify limits via primary docs—if offline/failing, mark `[Unverified — requires primary doc check]`, avoid guessing quotas/TTLs, list claims to verify. Reply in chat unless asked for a file; cite user artifacts/primary sources, never skill paths.
 
-## Evidence discipline
-
-Inspect artifacts before asking discoverable questions. Separate facts, assumptions, and unknowns; missing evidence is not a defect. Tool-check arithmetic, units, scenarios, and executed work. Reconcile diagrams with estimates. Primary sources verify uncertain limits; citations are insufficient. Disclose unavailable tools.
-
-Stop research yielding no new evidence; state missing experiments, data, or decisions. External changes require an implementation request.
+Pre-output check (fix gaps): (1) math/units match, gaps labeled unknown; (2) thresholds `Proposed`, guarantees state owner, violating sequence, fault schedule, oracle, trigger; (3) no skill paths or unverified limits.

@@ -4,7 +4,7 @@
 
 ---
 
-## 22. Reservation system
+## 24. Reservation system
 
 **Critical questions:** bucket granularity, hold TTL vs confirmed booking, overbooking cap, payment boundary, cancellation/refund policy, authoritative inventory owner, retry identity scope.
 
@@ -42,7 +42,7 @@
 
 **Failure prompts:** timeout after PSP success, **duplicate or out-of-order provider webhooks** (`AUTHORIZED` after `CAPTURED`/`REFUNDED`), crash between PSP response and local commit, partial refund race, settlement drift missed by API polling.
 
-**Trade-offs:** persisted intent state machine (`CREATED -> IN_FLIGHT -> AUTHORIZED -> CAPTURED -> SETTLED`) with deterministic per-attempt PSP keys; **sequence/state guards against duplicate or out-of-order webhooks**; **stuck-intent recovery sweep** querying PSP outcome before retrying/expiring `IN_FLIGHT` intents; **external statement / settlement reconciliation** (ingesting PSP/bank T+N settlement files beyond API polling) with owned quarantine repair; and **settled transaction reversal and refund ledger entries** booked strictly as compensating double-entry postings without mutating history. See [external-outcome mechanism](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction).
+**Trade-offs:** persisted intent state machine (`CREATED -> IN_FLIGHT -> AUTHORIZED -> CAPTURED -> SETTLED`) with deterministic per-attempt PSP keys, monotonic webhook guards, `IN_FLIGHT` outcome sweeps, T+N settlement statement reconciliation, and compensating double-entry reversal/refund postings—see [external-outcome mechanism](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction) for the crash-window and reconciliation protocol.
 
 ---
 
@@ -56,7 +56,7 @@
 
 **Failure prompts:** concurrent double-spend race, partial cross-shard posting, **duplicate or out-of-order funding/payout webhooks**, stuck cross-shard hold, row mutation, snapshot/journal drift.
 
-**Trade-offs:** single-writer account partition or serializable ledger transaction; hold-then-capture for cross-shard/external transfers; **sequence/state guards against duplicate or out-of-order webhooks**; **stuck-intent recovery sweep** resolving in-flight transfers before release/retry; **external statement / settlement reconciliation** comparing internal postings against bank/custodian settlement statements (beyond API polling); and **settled transaction reversal and refund ledger entries** booked exclusively as compensating contra-postings. Resolve provider events via [external-outcome mechanism](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction).
+**Trade-offs:** single-writer account partition or serializable ledger transaction; hold-then-capture for cross-shard/external transfers; monotonic funding/payout webhook guards, custodian settlement reconciliation, and immutable contra-postings for settled reversals—resolve provider events via [external-outcome mechanism](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction).
 
 ---
 

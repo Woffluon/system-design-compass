@@ -2,6 +2,8 @@
 
 > Identify invariants, authoritative owners, scale axes, and failure boundaries. Combine with shared references.
 
+**Contents:** [8. URL shortener](#8-url-shortener) · [9. Web crawler](#9-web-crawler) · [10. Notification delivery](#10-notification-delivery) · [11. News feed](#11-news-feed) · [12. Chat](#12-chat) · [13. Search autocomplete](#13-search-autocomplete) · [14. Video platform](#14-video-platform) · [15. File sync](#15-file-storage-and-synchronization) · [16. Proximity search](#16-proximity-search) · [17. Nearby friends](#17-nearby-friends) · [18. Map & navigation](#18-map-and-navigation)
+
 ---
 
 ## 8. URL shortener
@@ -40,9 +42,9 @@
 
 **Scale axes:** recipients, fan-out, channel mix, scheduled bursts, retry multiplier under provider degradation, active tokens.
 
-**Failure prompts:** **crash after remote provider success before local delivery record commit** causing duplicate resend, stale token, provider outage/throttling, preference race, thundering retry, quiet-hours breach, unowned DLQ growth.
+**Failure prompts:** post-send delivery record loss before commit (push/SMS/webhook), stale device token, provider throttling, consent/quiet-hours race, thundering retry, unowned DLQ growth.
 
-**Trade-offs:** durable outbox acceptance before async dispatch; pre-send `IN_FLIGHT` record plus provider idempotency key (or provider status query before retry) to close the post-send crash window; transactional vs bulk queues. Size completion capacity for peak input times retry multiplier, and define an owned DLQ/exhaustion repair path (owner, alert threshold, replay/suppress action—exhaustion is not completion).
+**Trade-offs:** durable outbox acceptance before async dispatch; pre-send `IN_FLIGHT` record plus provider idempotency key per [external-outcome resolution](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction); transactional vs bulk queues. Size degraded completion above retry-multiplied demand per [estimation](requirements-estimation.md#derive-peak-attempt-demand-and-backlog-drain-under-duplicates-and-retries) and assign an owned DLQ repair path ([backlog drain](distributed-systems.md#backlog-drain-capacity-and-age-triggered-intervention)).
 
 ---
 
@@ -138,16 +140,9 @@
 
 **Scale axes:** active users, update cadence, friend degree, cell density, subscriptions, fan-out.
 
-**Failure prompts:** stale auth/block cache leaking location after revocation, cell-boundary flapping, high-degree fan-out spike, location replay, region handoff, reconnect burst. A moving authorized viewer can triangulate finer coordinates by combining repeated distance-band queries from changing positions; stripping coordinates alone does not bound disclosure.
+**Failure prompts:** stale auth/block cache leaking location after revocation, cell-boundary flapping, crowded-cell fan-out spike, moving-viewer triangulation across repeated distance-band queries, reconnect burst, stale presence replay.
 
-**Trade-offs:** compare mechanisms against measured cadence, degree/density skew, and revocation budgets (do not install all three):
-- **Pull:** queries authorized friends' latest state; scales with active polls and friend degree.
-- **Geocell pub/sub:** routes updates to cell subscribers then filters by friendship authority; scales with movement writes and cell occupancy.
-- **Hybrid:** sends bounded invalidations to active viewers who pull current state, trading session coordination for fewer polls.
-
-**Decision evidence:** compare mechanism cost and failure boundaries in the recommendation rather than deferring alternatives to future triggers. Explain moving-viewer inference via repeated distance-band queries. Select a disclosure policy and enforcement mechanism—such as stable subject coarsening plus bounded query/refresh budgets—because distance bands or rate limits alone fail under multi-position probing. Disclose residual inference.
-
-**Validation:** inject crowded cells, simultaneous reconnects, stale presence, and revocation. State bounded responses: partition/suppress optional cell fan-out, jitter/rate-limit reconnects, reject expired locations, and fail closed on auth uncertainty. Measure client radio wakes and server load; coalesce movements and cap refresh. Probe from multiple positions to test the coarsening/budget policy. Use short retention, explicit deletion, and treat previously observed locations as an irreversible disclosure boundary.
+**Trade-offs:** compare **pull** (scales with polls × degree), **geocell pub/sub** (scales with movement × cell occupancy), and **hybrid** (invalidation + pull) against measured cadence and revocation SLA rather than installing all three. Enforce stable subject coarsening plus bounded query/refresh budgets (distance bands or rate limits alone fail multi-position probing), disclose residual inference, use short retention with explicit deletion, and validate crowded cells, reconnect jitter, and fail-closed auth revocation.
 
 ---
 

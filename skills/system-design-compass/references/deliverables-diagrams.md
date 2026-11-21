@@ -18,11 +18,11 @@ Use when a design spans multiple boundaries, teams, interfaces, or quality attri
 10. **Delivery and migration:** slices, mixed-version compatibility, rollout phases, abort thresholds, rollback, decommission.
 11. **Validation and risks:** concrete fault schedules, pass/fail business oracles, launch gates, residual risks, owners.
 
-Collapse immaterial sections to one line; keep decision-changing unknowns explicit.
+Omit immaterial RFC sections in narrow ADRs; in full RFCs, collapse immaterial sections to one line (`N/A — <reason>`) while keeping decision-changing unknowns explicit.
 
 ## Architecture Decision Record
 
-Use for one durable choice (`narrow-adr`). Present the decision and its five operational guarantees at a glance:
+Use for one durable choice (`narrow-adr`). Keep narrow ADRs concise (`~200–400 words`); include only facts that change the decision and present its five operational guarantees at a glance:
 
 ```markdown
 # ADR-NNN: Decision title
@@ -54,11 +54,32 @@ Never hide unresolved correctness gaps in an ADR. Link superseding ADRs instead 
 
 ## Architecture review
 
-Lead with verdict and scope. Order findings by severity: **priority, evidence, trigger, impact, recommendation, and pass/fail validation oracle**. Close with strengths to preserve, blockers, and open unknowns. Separate demonstrated defects from hypotheses.
+Lead with verdict and scope. Order findings by severity (**priority, evidence, trigger, impact, recommendation, and pass/fail validation oracle**). Close with strengths to preserve, blockers, and open unknowns, separating demonstrated defects from hypotheses:
+
+```markdown
+### [P1] Post-charge crash duplicates Stripe charges
+- **Evidence:** `orders/service.py:44-52` calls `stripe.charge()` before persisting local intent.
+- **Trigger:** Worker crashes after Stripe `200 OK` and before DB commit; queue redelivery charges again.
+- **Impact:** Violates single-charge invariant and creates unowned billing drift.
+- **Recommendation:** Persist `IN_FLIGHT` intent + deterministic `idempotency_key` before HTTP call; sweep stuck intents.
+- **Validation:** Drop socket after mock PSP `200 OK`, retry 3x; pass iff PSP charges = 1 and local postings = 1.
+```
 
 ## Migration plan
 
-State source and target states, invariants held throughout cutover, mixed-version read/write compatibility, and source-of-truth handoff. Use a phase table: **slice, preconditions, cohort, success oracle, observation window, quantitative abort threshold (labeled if proposed), rollback, owner, and exit evidence**. Close with reconciliation and decommission gates.
+State source and target states, invariants held throughout cutover, mixed-version read/write compatibility, and source-of-truth handoff, closing with reconciliation and decommission gates:
+
+| Slice | Preconditions | Cohort | Success oracle | Observation window | Abort threshold | Rollback | Owner | Exit evidence |
+|---|---|---|---|---|---|---|---|---|
+| Phase 1: dual-write orders | Expand schema live | 10% canary | 0 drift rows; p99 < 120ms (`Proposed`) | 48h | Drift > 0 or err > 0.5% (`Proposed`) | Route writes to v1 (v1 reads/writes v2 rows) | Checkout lead | Signed reconciliation query |
+
+## Interview feedback
+
+Close practice sessions with four concrete items, distinguishing interview simplifications from production gates:
+1. **Strength to preserve:** one decision or invariant handled cleanly.
+2. **Highest-impact gap:** the key invariant, owner, or violating sequence missed.
+3. **Flawed assumption:** any ungrounded unit, bottleneck, or scale claim.
+4. **Next practice target:** one focused drill for the next session.
 
 ## Implementation-ready plan
 
@@ -80,12 +101,3 @@ Add a diagram only when topology, trust boundaries, or sequence are clearer visu
 - Distinguish authoritative stores, queues, trust boundaries, and external providers.
 - Keep one story per diagram; state in prose what it omits.
 - Fall back to an ordered flow or compact ASCII if Mermaid is unsupported. **A diagram never substitutes for consistency, failure, or ownership semantics.**
-
-```mermaid
-flowchart LR
-    Client[Client] -->|HTTPS command| API[API boundary]
-    API -->|conditional write| Store[(System of record)]
-    API -->|durable event| Queue[[Work queue]]
-    Queue --> Worker[Idempotent worker]
-    Worker -->|side effect| Provider[External provider]
-```
