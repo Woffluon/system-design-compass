@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import evaluate_skill as evaluation
+if __package__:
+    from . import evaluate_skill as evaluation
+else:
+    import evaluate_skill as evaluation
 
 
 class EvaluationTests(unittest.TestCase):
@@ -151,6 +156,145 @@ class EvaluationTests(unittest.TestCase):
             self.assertNotEqual(before, evaluation.digest(source))
             with self.assertRaises(ValueError):
                 evaluation.snapshot(source, root / "snapshot")
+
+    def test_browsing_retain_source_content_emits_single_developer_instructions(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            suite = root / "suite.json"
+            evaluation.write_json(suite, {
+                "name": "test",
+                "cases": [{"id": "browse", "setup": "s", "prompt": "p", "browsing": True}],
+            })
+            output = root / "runs"
+            args = argparse.Namespace(
+                suite=suite, cases=None, condition="none", skill=None, output=output,
+                models=["m1"], repeat=1, effort="medium", sandbox="read-only",
+                limit=94, workers=1, timeout=30, base_url=None,
+                inline_fixtures=False, retain_source_content=True,
+            )
+            captured = []
+
+            def fake_run(cmd, **kwargs):
+                captured.append(cmd)
+                return subprocess.CompletedProcess(
+                    cmd, 0,
+                    stdout=json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": "ok"}})
+                    + "\n" + json.dumps({"type": "turn.completed", "usage": None}) + "\n",
+                    stderr="",
+                )
+
+            with patch.object(evaluation, "cli_command", return_value=["codex"]), \
+                 patch.object(evaluation, "disabled_host_skills", return_value=[]), \
+                 patch.object(evaluation.subprocess, "run", side_effect=fake_run):
+                evaluation.run_suite(args)
+
+            dev_args = [arg for arg in captured[0] if isinstance(arg, str) and arg.startswith("developer_instructions=")]
+            self.assertEqual(len(dev_args), 1)
+            self.assertIn("skill/SKILL.md", dev_args[0])
+            self.assertIn("Retrieval instrumentation:", dev_args[0])
+
+    def test_listing_commands_without_content_reads_do_not_count(self):
+        for cmd in (
+            "ls skill/SKILL.md",
+            "dir skill\\SKILL.md",
+            "find skill -name SKILL.md",
+            "Test-Path skill/SKILL.md",
+            "stat skill/SKILL.md",
+            "wc -l skill/SKILL.md",
+        ):
+            with self.subTest(cmd=cmd):
+                result = evaluation.metrics([{
+                    "type": "item.completed",
+                    "item": {"type": "command_execution", "command": cmd, "exit_code": 0, "aggregated_output": "skill/SKILL.md\n"},
+                }])
+                self.assertEqual(result["observed_skill_reads"], [])
+                self.assertEqual(result["observed_skill_read_output_words"], 0)
+
+    def test_gemini_contamination_detected_by_shared_pattern(self):
+        result = evaluation.metrics([{
+            "type": "item.completed",
+            "item": {"type": "command_execution", "command": "cat ~/.gemini/skills/other/SKILL.md", "exit_code": 0, "aggregated_output": "x"},
+        }])
+        self.assertEqual(len(result["other_skill_commands"]), 1)
+
+    def test_disabled_host_skills_includes_codex_home_and_cli_override(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            home = root / "home"
+            home.mkdir()
+            codex_home = root / "custom-codex"
+            skill = codex_home / "skills" / "extra" / "SKILL.md"
+            skill.parent.mkdir(parents=True)
+            skill.write_text("Custom", encoding="utf-8")
+            with patch.object(evaluation.Path, "home", return_value=home), \
+                 patch.dict(os.environ, {"CODEX_HOME": str(codex_home)}, clear=False):
+                disabled = evaluation.disabled_host_skills()
+            self.assertEqual(disabled, [{"path": skill.resolve().as_posix(), "enabled": False}])
+
+            fake_bin = root / "codex-bin"
+            fake_bin.write_text("", encoding="utf-8")
+            with patch.dict(os.environ, {"CODEX_CLI_BIN": str(fake_bin)}, clear=False):
+                self.assertEqual(evaluation.cli_command(), [str(fake_bin)])
+
+            cmd_shim = root / "codex.cmd"
+            cmd_shim.write_text("", encoding="utf-8")
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("CODEX_CLI_BIN", None)
+                with patch.object(evaluation.shutil, "which", side_effect=[str(cmd_shim), "node"]):
+                    with self.assertRaisesRegex(ValueError, "CODEX_CLI_BIN"):
+                        evaluation.cli_command()
+
+    def test_run_lock_writes_pid_and_rejects_existing_lock(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            suite = root / "suite.json"
+            evaluation.write_json(suite, {"name": "test", "cases": [{"id": "one", "setup": "", "prompt": ""}]})
+            output = root / "runs"
+            output.mkdir()
+            lock = output / "run.lock"
+            lock.write_text("pid=99999\n", encoding="utf-8")
+            args = argparse.Namespace(
+                suite=suite, cases=None, condition="none", skill=None, output=output,
+                models=["m"], repeat=1, effort="medium", sandbox="read-only", limit=94,
+            )
+            with self.assertRaisesRegex(ValueError, "run\\.lock"):
+                evaluation.run_suite(args)
+            self.assertTrue(lock.exists())
+
+            lock.unlink()
+            seen_lock_text = []
+
+            def fake_run(cmd, **kwargs):
+                seen_lock_text.append(lock.read_text(encoding="utf-8"))
+                return subprocess.CompletedProcess(
+                    cmd, 0,
+                    stdout=json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": "ok"}})
+                    + "\n" + json.dumps({"type": "turn.completed", "usage": None}) + "\n",
+                    stderr="",
+                )
+
+            args.workers = 1
+            args.timeout = 30
+            args.base_url = None
+            args.inline_fixtures = False
+            args.retain_source_content = False
+            with patch.object(evaluation, "cli_command", return_value=["codex"]), \
+                 patch.object(evaluation, "disabled_host_skills", return_value=[]), \
+                 patch.object(evaluation.subprocess, "run", side_effect=fake_run):
+                evaluation.run_suite(args)
+            self.assertIn(f"pid={os.getpid()}", seen_lock_text[0])
+
+    def test_blind_respects_custom_seed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            runs = root / "runs"
+            for i in range(1, 5):
+                evaluation.write_json(runs / f"r{i}.json", {
+                    "status": "completed", "run_id": f"r{i}", "suite": "test", "case": f"c{i}", "answer": f"A{i}",
+                })
+            evaluation.blind(runs, root / "p1.json", root / "k1.json", seed=111)
+            evaluation.blind(runs, root / "p2.json", root / "k2.json", seed=222)
+            self.assertNotEqual(evaluation.read_json(root / "k1.json"), evaluation.read_json(root / "k2.json"))
 
 
 if __name__ == "__main__":
