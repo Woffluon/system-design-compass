@@ -1,6 +1,6 @@
 ---
 name: system-design-compass
-description: Resolves architecture decisions for new or production system design, code-backed reviews, zero-downtime migrations, and scaling. Use when asked to write an RFC or decision record (ADR), compare async queues vs. sync calls, design idempotency, payment/ledger or lease boundaries, plan cutover/rollback phases, review reliability/tail-latency risks, or run a system design interview. Excludes routine coding, UI/UX design systems, local refactoring, CI/tooling bumps, or pure SQL/algorithm tuning without an architectural boundary.
+description: Resolves architecture decisions for new or production system design, code-backed reviews, zero-downtime migrations, and scaling. Use when asked to write an RFC or decision record (ADR), compare async queues vs. sync calls, design idempotency, payment/ledger or lease boundaries, plan cutover/rollback phases, review reliability/tail-latency risks, or run a system design interview. Excludes routine coding, UI/UX design systems, local refactoring, CI/tooling bumps, behavioral interviews, or pure SQL/algorithm tuning without an architectural boundary.
 license: MIT
 metadata:
   author: Woffluon
