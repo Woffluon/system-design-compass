@@ -1,94 +1,94 @@
 # Production readiness
 
-> Use this reference for a full production design, review, or migration. Apply each lens in proportion to the workload's business criticality and lifecycle stage.
+> Use for production design, review, or migration in proportion to business criticality and lifecycle stage.
 
 ## Reliability and recovery
 
-Start from user journeys, SLOs, RTO/RPO, and data-loss impact. Build a dependency budget: a journey cannot be more available or faster than mandatory synchronous dependencies allow without redundancy, caching, degradation, or decoupling.
+Anchor on user journeys, SLOs, RTO/RPO, and data-loss impact. A journey cannot exceed the availability or latency of its mandatory synchronous dependencies without redundancy, caching, degradation, or decoupling.
 
-For every critical path define:
+For every critical path specify:
 
-- Deadline and per-hop timeout budget.
-- Retry owner, retryable errors, attempt/elapsed-time cap, and jitter.
-- Idempotency or reconciliation for ambiguous completion.
-- Capacity during a replica/zone loss and during recovery work.
-- Isolation boundary for tenants, priorities, and failure domains.
-- Degraded behavior and which invariants still hold.
-- Detection, mitigation, restoration, and verification.
+- End-to-end deadline and per-hop timeout budget.
+- Retry owner, retryable conditions, attempt/elapsed-time cap, and jitter.
+- Ambiguous-completion handling: idempotency key, outcome query, or reconciliation. **Retry exhaustion is not completion; exhausted attempts require an owned repair path.**
+- Capacity during replica/zone loss and subsequent recovery load.
+- Tenant, priority, and failure-domain isolation boundaries.
+- Degraded mode and invariants that remain enforced.
+- Quantitative intervention thresholds (circuit breaking, load shedding, failover) with detection, mitigation, restoration, and verification steps.
 
-Evaluate process crash, network delay/partition, dependency failure, saturation, bad input, bad deployment, credential loss, data corruption, operator error, and relevant zone/region loss. Do not add multi-region complexity without a recovery requirement and a tested consistency/failover model.
+Evaluate process crash, network delay/partition, dependency failure, saturation, poison input, bad deployment, credential expiry, data corruption, operator error, and zone/region loss. Add multi-region active/active or failover only when RTO/RPO justifies the consistency and operational cost.
 
-Backups need stated scope, frequency, retention, encryption, access, restore time, and restore tests. **Redundant replicas are not independent backups.**
+Backups require stated scope, RPO frequency, retention, encryption, access control, restore duration, and scheduled restore drills. **Redundant replicas are not independent backups.**
 
 ## Observability and operations
 
-Instrument what the user experiences and what operators can act on:
+Instrument user-visible outcomes and operator decision signals:
 
-- Request/event volume, success/error ratio, latency distributions, and saturation.
-- Queue age, lag, retries, drops, reconciliation discrepancies, and freshness.
-- Dependency health and budget consumption.
-- Business invariants such as accepted-versus-completed work or ledger imbalance.
-- Deploy version, region/zone, tenant/cohort, and correlation context.
+- Request/event rate, success/error ratio, latency percentiles, and resource saturation.
+- **Oldest uncompleted business backlog age**, queue lag, retry amplification, dropped work, reconciliation drift, and data freshness.
+- Exhausted attempts / dead-letter arrivals awaiting owned repair.
+- Dependency health, timeout rate, and error-budget burn.
+- Business invariants (accepted versus completed work, ledger balance, reservation parity).
+- Version, region/zone, tenant/cohort, and trace correlation IDs.
 
-Use structured logs for investigation, metrics for trends and alerting, and traces for cross-boundary causality. Control label cardinality and sensitive data.
+Use structured logs for diagnosis, bounded-cardinality metrics for trends and alerting, and distributed traces for cross-boundary latency and causality. Redact secrets and personal data at emission.
 
-Alerts should identify a user-impacting or imminent condition, have an owner and response, and avoid paging on symptoms that require no action. Prefer SLO burn or durable invariant violation over raw component noise. Provide dashboards for launch, steady state, capacity, and recovery.
+Every alert requires a user-impacting or invariant-violating condition, a **quantitative intervention threshold** (label proposed values), a named owner, and a bounded runbook action:
 
-Record operational ownership, escalation, runbooks for high-risk actions, access needed during incidents, dependency contacts, and post-incident learning. Automate common safe actions but preserve auditability and stop conditions.
+- Page on SLO burn, durable invariant drift, **uncompleted business backlog age exceeding the completion budget**, or **exhausted attempts accumulating without repair**.
+- Never treat dead-letter enqueue or retry exhaustion as completed business work.
+- Pair high-risk runbooks and automated mitigations with explicit stop conditions and audit trails.
 
 ## Security, privacy, and abuse resistance
 
-Classify data and identify actors, assets, trust boundaries, entry points, privileged operations, and third parties. Threat-model the actual data flows:
+Classify data and map actors, assets, trust boundaries, entry points, privileged actions, and third parties. Threat-model actual flows:
 
-1. Decompose the system and trust boundaries.
-2. Identify threats such as spoofing, tampering, repudiation gaps, information disclosure, denial of service, and privilege escalation.
-3. Rank by plausible likelihood and business impact.
-4. Select preventive, detective, and recovery controls; name residual risk and validation.
+1. Decompose components and trust boundaries.
+2. Identify spoofing, tampering, repudiation gaps, disclosure, denial of service, and privilege escalation.
+3. Rank by likelihood and business impact.
+4. Bind preventive, detective, and recovery controls to each high-risk path; record residual risk and verification tests.
 
-Cover identity proof, authentication, authorization at the resource, tenant isolation, service identity, secret/key lifecycle, encryption in transit/at rest, audit events, dependency provenance, input validation, egress, administrative paths, and incident response.
+Cover authentication, resource-level authorization, tenant isolation, workload identity, secret rotation, encryption in transit/at rest, immutable audit logs, dependency provenance, input validation, egress control, break-glass access, and incident response.
 
-Apply data minimization, purpose limitation, retention/deletion, residency, export, consent, and subject-access requirements only as relevant. Do not invent compliance claims. Map supplied obligations to concrete data flows, controls, evidence, and owners.
+Map supplied privacy or regulatory obligations (minimization, retention/deletion, residency, export, subject access) to concrete stores, flows, evidence, and owners without inventing compliance certifications.
 
-Consider abuse separately from unauthorized access: quota evasion, scraping, spam, fraud, resource exhaustion, amplification, poisoning, and malicious tenants may use valid credentials. Define detection, rate limits, friction, appeals, and safe failure behavior.
+Model abuse separately from unauthenticated access: valid credentials can still drive quota evasion, scraping, spam, fraud, amplification, poisoning, or noisy-neighbor exhaustion. Specify detection thresholds, rate/cost limits, progressive friction, quarantine, and appeals.
 
 ## Performance and capacity
 
-Set latency budgets by journey and payload class. Locate serial work, fan-out, contention, cache misses, data scans, serialization, network crossings, and cold starts. Optimize after a model or measurement identifies the limiting resource.
+Budget latency by journey and payload class. Identify serial hops, fan-out, lock contention, cache misses, unindexed scans, serialization overhead, cross-zone calls, and cold starts; optimize the measured bottleneck.
 
-Capacity plans should include normal peak, forecast growth, loss of a failure domain, deployment overlap, background maintenance, and recovery. State autoscaling signal, delay, minimum/maximum, warm-up, and behavior at the cap. Autoscaling does not replace admission control.
+Size capacity for baseline peak, growth forecast, failure-domain loss, deployment overlap, compaction/maintenance, and backlog drain after outage. Specify autoscaling signal, reaction lag, min/max bounds, warm-up time, and behavior at cap. **Autoscaling does not replace admission control or backpressure.**
 
-Define load, stress, soak, spike, and failover tests where material. Production-like data shape and key skew often matter more than aggregate request count.
+Validate with load, stress, soak, spike, and failover tests using production-like payload sizes and hot-key skew.
 
 ## Cost and sustainability
 
-Model dominant units rather than a single monthly total:
+Model dominant unit drivers rather than a single monthly total:
 
-- Requests, compute time, provisioned idle baseline, and accelerators.
-- Stored bytes including replicas, indexes, versions, logs, and backups.
-- Ingest, query scans, message operations, and retained streams.
-- Cross-zone/region/provider transfer and internet egress.
-- Licenses, support, and human operational load.
+- Compute/request execution, provisioned baseline, and accelerators.
+- Storage bytes across primary, replicas, indexes, snapshots, logs, and backups.
+- Ingest, scan volume, queue/message operations, and stream retention.
+- Cross-zone, cross-region, cross-provider, and internet egress transfer.
+- Third-party usage fees and on-call operational toil.
 
-Relate cost to a business unit such as active tenant, completed job, stored object, or transaction. Show fixed versus variable costs, low/base/high scenarios, and thresholds that change the architecture.
-
-Reduce waste by matching retention and redundancy to requirements, batching appropriate work, scaling idle resources, using efficient data layouts, and deleting unused copies. Sustainability usually improves with utilization and reduced transfer/storage, but reliability and regulatory obligations may justify redundancy; record the trade-off.
+Normalize cost per business unit (active tenant, completed job, transaction, stored GB) across low/base/high scenarios and name the quantitative volume or cost thresholds that trigger architectural change. Match retention, replication, and batching to actual SLO and compliance requirements.
 
 ## Delivery and launch
 
-Define the smallest independently verifiable slices. For each rollout phase state cohort, compatibility, success metrics, observation window, abort threshold, rollback, and owner. Use flags, canaries, shadowing, or cells only when they reduce a named risk.
+Ship in small, independently verifiable slices. For each rollout phase define cohort, backward/forward compatibility, success metrics, observation window, **quantitative abort/rollback threshold** (labeled when proposed), rollback mechanics, and owner.
 
-Before broad launch confirm:
+Before broad launch verify with evidence:
 
-- Critical journeys and invariants have tests.
-- Capacity and failure tests cover expected peaks and loss scenarios.
-- Dashboards, alerts, traces, runbooks, and ownership exist.
-- Restore, rollback, and reconciliation have been exercised.
-- Access, secrets, audit, retention, and deletion controls are verified.
-- Cost limits and anomaly detection are configured where appropriate.
-- Known risks have owners, deadlines, or explicit acceptance.
+- Critical journeys, mixed-version compatibility, and business invariants pass automated tests.
+- Peak load, failure-domain loss, and backlog-drain recovery meet targets.
+- Dashboards, quantitative alerts, runbooks, and repair ownership are live.
+- Backup restore, deployment rollback, and state reconciliation drills succeeded.
+- Access, secrets, audit, retention, deletion, and cost guardrails are enforced.
+- Residual risks have named owners, expiration dates, or explicit sign-off.
 
-Production readiness is an evidence-backed decision. **A checklist with unverified boxes is not evidence.**
+**An unexercised checklist is not production readiness evidence.**
 
 ## Primary references
 
-This guidance is independently synthesized from public engineering practices including [AWS Well-Architected](https://docs.aws.amazon.com/wellarchitected/latest/framework/definitions.html), [Azure Well-Architected](https://learn.microsoft.com/azure/well-architected/), [Google Cloud Well-Architected](https://cloud.google.com/architecture/framework), [Google SRE](https://sre.google/books/), and [OWASP threat modeling](https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html). Consult current official guidance for regulated or provider-specific decisions.
+Synthesized from public engineering guidance including [AWS Well-Architected](https://docs.aws.amazon.com/wellarchitected/latest/framework/definitions.html), [Azure Well-Architected](https://learn.microsoft.com/azure/well-architected/), [Google Cloud Well-Architected](https://cloud.google.com/architecture/framework), [Google SRE](https://sre.google/books/), and [OWASP threat modeling](https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html). Consult current official standards for regulated workloads.

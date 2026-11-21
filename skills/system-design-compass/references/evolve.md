@@ -1,85 +1,83 @@
 # Evolution and migration workflow
 
-> Use this mode when a running system must change without losing correctness, availability, or reversibility.
+> Use when a running system must change without losing correctness, availability, or reversibility.
 
-## Establish current and target states
+## Bound current state, target state, and migration invariants
 
-Describe the current architecture from evidence, the pressure forcing change, and the minimum target capability. Separate the desired end state from the next safe state. Record constraints such as release independence, client upgrade lag, data residency, maintenance windows, and maximum acceptable rollback loss.
+Describe the current architecture from evidence, pressure forcing change, and minimum target capability. Separate the end state from the next safe step. Record release independence, client upgrade lag, data residency, maintenance windows, and maximum acceptable rollback loss.
 
-Name the invariants that must hold throughout—not only after—the migration. Typical examples include no lost accepted writes, no double charge, stable identifiers, monotonic entitlement, bounded staleness, and continued authorization enforcement.
+Name invariants holding throughout—not only after—migration: no lost accepted writes, no double charge, stable identifiers, monotonic entitlement, bounded staleness, and continuous authorization enforcement.
 
-## Choose the migration shape
+## Select a reversible migration shape
 
-Prefer a sequence of reversible transitions. Use the least elaborate pattern that fits:
+Prefer reversible transitions using the simplest fitting pattern:
 
 | Pattern | Decision boundary |
 |---|---|
-| **Expand–migrate–contract** | add compatible schema or interface, move traffic/data, then remove the old shape. |
-| **Strangler transition** | intercept a bounded capability and gradually route it to a replacement. |
+| **Expand–migrate–contract** | add compatible schema/interface, move traffic and data, then contract old shape after verification gates pass. |
+| **Strangler transition** | intercept a bounded capability and incrementally route traffic to the replacement. |
 | **Parallel run or shadowing** | execute the new path without serving its result; compare outputs and resource behavior. |
-| **Backfill plus change capture** | copy history, then converge ongoing changes before cutover. |
-| **Dual read** | compare or fall back during a read-path transition; define which result is authoritative. |
-| **Dual write** | use only with an explicit failure model, idempotency, reconciliation, and ownership. Two independent writes are not atomic by default. |
-| **Versioned contract** | support old and new clients until measured usage permits retirement. |
-| **Cell, tenant, cohort, or region rollout** | bound blast radius and expose skew before broad migration. |
+| **Backfill plus change capture** | copy history, then converge ongoing mutations before cutover. |
+| **Dual read** | compare or fall back during a read transition; define which store is authoritative. |
+| **Dual write** | require an explicit failure model, idempotency, reconciliation, and single authoritative owner; two writes are not atomic. |
+| **Versioned contract** | support old and new clients until measured legacy traffic reaches zero. |
+| **Cell, tenant, cohort, or region rollout** | bound blast radius and expose skew before broad cutover. |
 
-Avoid a big-bang cutover unless coexistence is impossible and the accepted outage/data-loss envelope is explicit.
+Avoid big-bang cutover unless coexistence is impossible and the outage/data-loss envelope is explicit.
 
-## Design data movement
+## Design data movement, reconciliation, and repair
 
 Specify:
 
-- Source of truth before, during, and after each phase.
+- Authoritative source of truth before, during, and after each phase.
 - Stable identity mapping and schema/default conversion.
-- Backfill ordering, checkpoints, rate limits, and restart behavior.
+- Backfill ordering, checkpoints, rate limits, and restart idempotency.
 - Handling of late, duplicate, out-of-order, deleted, and malformed records.
-- Reconciliation query, tolerated discrepancy, repair process, and audit retention.
-- Cutover consistency boundary and how writes in flight are handled.
-- Backup and restoration tests before irreversible contraction.
+- Reconciliation query, tolerated discrepancy, repair owner, escalation threshold, and audit retention.
+- Cutover consistency boundary and in-flight write handling.
+- Backup and restore verification before irreversible contraction.
 
-Never treat record counts alone as correctness proof. Compare business invariants, sampled content, aggregates, and boundary conditions.
+Row counts alone do not prove correctness; reconcile business invariants, sampled content, aggregates, and boundaries.
 
-Make discrepancy repair explicit: read the authoritative row or deletion at its version, apply it through the same atomic version guard as capture/backfill, and reconcile again. Never repair from an unversioned stale scan. Give the repair an owner and escalation threshold; mismatches block cutover until repaired or explicitly accepted within the correctness envelope.
+For discrepancy repair, read the authoritative row or deletion tombstone at its version, apply it through the same atomic version guard as capture/backfill, and re-reconcile. Never repair from an unversioned stale scan. Unrepaired mismatches outside the correctness envelope block cutover.
 
-### Prove the ownership handoff
+### Prove the ownership handoff and in-flight write drain
 
-Read this check for writable-source copy or capture migrations. Establish replayable capture before the scan and retain versioned deletion evidence. At cutover, block new source writes **and resolve transactions already in flight** by draining or aborting them. Only then record the final committed capture boundary, apply through it, reconcile and enable the target owner. An admission flag alone cannot stop a transaction that already passed it; a post-boundary source commit can otherwise disappear from the target. Fence stale writers at their actual commit boundary.
+For writable-source copy or capture migrations, start replayable capture before scanning and retain versioned deletion evidence. At cutover, block new source writes **and resolve transactions already in flight** by draining or aborting them. Only then record the final committed capture boundary, **durably apply all captured in-flight writes** through that boundary at the target, reconcile, and enable the target writer. An admission flag cannot stop a transaction already past admission; fence stale writers at their commit boundary so post-boundary commits cannot vanish.
 
-Exercise delayed stale scan results, deletion before scanning, duplicate/out-of-order capture and restart. Require the newest version/deletion/content at the target, no lost accepted writes and one authoritative writer. If these barriers cannot be enforced, identify the missing capability instead of authorizing cutover.
+Exercise delayed stale scan reads, pre-scan deletions, duplicate/out-of-order capture, and restarts. Require newest version/deletion preservation, zero lost accepted writes, and one authoritative writer before cutover.
 
-## Make each phase executable
+## Define executable phases, quantitative abort thresholds, and rollback boundaries
 
 For every phase record:
 
-1. Change and affected interfaces.
-2. Preconditions and owner.
-3. Compatibility window.
-4. Traffic or data cohort.
-5. Success metrics and observation period.
-6. Abort threshold.
-7. Rollback action and what cannot be rolled back.
-8. Exit evidence required for the next phase.
+1. Change, affected contracts, preconditions, and owner.
+2. Compatibility window and traffic/data cohort.
+3. Success metrics and observation duration.
+4. **Quantitative abort thresholds** (explicit error-rate, latency, capture-lag, or discrepancy limits triggering immediate halt or rollback).
+5. **Executable rollback action and last safe rollback point** (exact state boundary before unreplicated writes or irreversible external effects occur, plus forward-repair or reverse-sync actions past that boundary).
+6. Exit evidence required for the next phase.
 
-Keep rollback within the tested compatibility window. A rollback that reintroduces code unable to read newly written data is not a rollback.
+Keep rollback within the verified compatibility window. Returning to old code unable to both **read and write** data mutated during the phase is not a rollback.
 
-Specify a rollback drill before promoting a stateful phase: create data and pending work with the new version, restore the proposed compatible code/routing, exercise supported old clients and reconcile accepted operations. Check response meaning as well as schema decoding, and verify no work is lost or replayed twice. State which new writes or external effects make rollback unsafe; test forward repair or reverse synchronization at that boundary instead. A planned drill remains a release prerequisite until its results exist.
+### Drill mixed-version reads and writes before promotion
 
-## Control operational risk
+Before promoting a stateful phase, execute a **mixed-version rollback drill**: write new-format data and pending work with the new version, restore compatible old code/routing, and verify old binaries **read and write** those records without data loss, silent corruption, or duplicate external effects. Check semantic meaning and schema decoding. State the point of no return where irreversible external effects or unreplicated target writes close rollback, and test forward repair or reverse sync beyond it. A planned drill blocks release until pass evidence exists.
 
-Budget migration traffic separately from user traffic. Apply backpressure and pause controls. Monitor correctness deltas, queue age, saturation, latency, errors, cost, and SLO burn by old/new path and cohort. Preserve correlation identifiers across both systems.
+## Control operational risk and blast radius
 
-Assign a decision maker for cutover and abort. Schedule high-risk phases when the team can observe them, while respecting regional traffic and business cycles. Prefer automated stop conditions for measurable hazards.
+Separate migration traffic budgets from user traffic with backpressure and pause controls. Monitor correctness deltas, queue age, saturation, latency, errors, cost, and SLO burn by path and cohort while preserving correlation IDs. Assign a cutover/abort owner and wire automated stops to quantitative abort thresholds.
 
-## Contract the old system
+## Gate schema and system contraction on zero legacy traffic and durable apply
 
-Treat dates as checkpoints, not retirement evidence. Storage can retire separately from public contracts only after proving translation of supported reads **and writes** and explicitly closing old-binary rollback. Install quarantine before routing to old workers: a readable `pending` projection can still duplicate an external effect.
+**Never trigger schema/column drop or contraction on a calendar date (such as "Day 7").** Dates are schedule checkpoints, not safety evidence.
 
-Remove old reads, writes, credentials, routes, data, jobs, flags, dashboards, and alerts only after:
+Drop old columns, schemas, reads, writes, credentials, routes, jobs, flags, or storage only after proving:
 
-- No supported client or producer uses the old contract.
-- The new path has met success criteria for the agreed observation window.
-- Reconciliation is clean or discrepancies are accepted explicitly.
-- Restore and rollback obligations have expired or moved to the new system.
-- Retention, deletion, legal hold, and audit requirements are satisfied.
+- **Measured zero legacy read and write traffic** from supported clients, workers, and producers across the observation window.
+- **Durable apply of all captured in-flight writes** through the fenced cutover boundary, verified by clean invariant and content reconciliation.
+- Proved translation of remaining supported reads **and writes**, plus explicit closure of old-binary rollback before retiring storage separately from public contracts.
+- Quarantine installed before old workers touch new-only states (such as a readable `pending` projection that could duplicate an external effect).
+- Satisfied backup restore, retention, deletion, legal-hold, and audit obligations.
 
-Finish with updated ownership and architecture records. Deferred decommissioning is operational debt; name an owner and deadline rather than calling the migration complete.
+Finish by updating ownership and architecture records, naming an owner and deadline for deferred cleanup.

@@ -4,64 +4,62 @@
 
 ## Turn goals into requirements
 
-Start from user and business outcomes. Separate:
+Separate user and business outcomes into:
 
-- **Functional requirements:** observable journeys, commands, queries, integrations, and administrative operations.
+- **Functional requirements:** observable journeys, commands, queries, integrations, and administrative actions.
 - **Quality attributes:** measurable behavior under a stated condition.
 - **Constraints:** fixed deadlines, skills, vendors, protocols, jurisdictions, budgets, and legacy contracts.
-- **Non-goals:** plausible work intentionally excluded.
+- **Non-goals:** plausible scope intentionally excluded.
 
-Prioritize each item as critical, important, or optional. If every attribute is highest priority, no trade-off can be made.
+Prioritize each item as critical, important, or optional; if everything is highest priority, no trade-off can be made.
 
-Write a quality-attribute scenario with six fields when precision matters:
+Express critical quality attributes as a six-field scenario:
 
 | Field | Question |
 |---|---|
-| Source | Who or what creates the stimulus? |
-| Stimulus | What happens: request, load spike, fault, attack, or change? |
-| Environment | Normal operation, peak, degraded dependency, recovery, or deployment? |
-| Artifact | Which service, data set, interface, or journey is affected? |
-| Response | What should the system do? |
+| Source | Who or what triggers the stimulus? |
+| Stimulus | Request, load spike, fault, attack, or change? |
+| Environment | Normal, peak, degraded dependency, recovery, or deploy? |
+| Artifact | Which service, store, interface, or journey is affected? |
+| Response | What action must the system take? |
 | Measure | What observable threshold proves success? |
 
 ## Define service objectives from user experience
 
-Choose indicators that represent successful user journeys, preferably measured at the boundary the user experiences. Common indicators include:
+Measure SLIs at the user-experienced boundary:
 
 - Availability or success ratio for eligible requests.
-- Latency distribution by operation and payload class.
-- Freshness or propagation delay.
+- Latency percentiles by operation and payload class.
+- Freshness or propagation lag.
 - Durability or accepted-write loss.
 - Correctness, reconciliation discrepancy, or duplicate-effect rate.
-- Throughput or deadline completion for batch and streaming work.
+- Throughput or deadline completion for batch and stream workloads.
 
-For each SLO state the population, success condition, threshold, window, exclusions, and measurement point. Keep internal component targets stricter only when an end-to-end dependency budget requires it.
+For each SLO state population, success condition, threshold, window, exclusions, and measurement point. Set stricter internal component targets only when an end-to-end dependency budget requires them.
 
-Error budget for an availability target:
+Availability error budget:
 
 ```text
 allowed_bad_fraction = 1 - SLO
 allowed_bad_events = eligible_events × allowed_bad_fraction
 ```
 
-Do not choose an SLO from habit or current performance. Tie it to user harm, business cost, dependency limits, staffing, and the cost of improvement.
+Ground SLOs in user harm, business cost, dependency limits, and staffing rather than habit.
 
-Set recovery targets for stateful or critical systems:
+State stateful recovery objectives per failure scope (process, node, zone, region, provider, corruption, operator error):
 
 | Recovery objective | Definition |
 |---|---|
-| **RTO** | maximum acceptable time to restore the capability. |
-| **RPO** | maximum acceptable interval of data loss measured from the disruption. |
-
-Define which failure scope they apply to: process, node, zone, region, provider, corruption, or operator error.
+| **RTO** | Maximum acceptable time to restore service capability. |
+| **RPO** | Maximum acceptable data-loss age from disruption onset. |
 
 ## Estimate only decision-driving quantities
 
-State inputs and use dimensional analysis. Keep average and peak separate.
+State input variables explicitly, apply dimensional analysis, and separate average from peak:
 
 ```text
 average_rate_per_second = events_per_period / seconds_per_period
-peak_rate = average_rate × peak_factor
+peak_rate = average_rate_per_second × peak_factor
 concurrency ≈ arrival_rate_per_second × average_time_in_system_seconds
 raw_storage = records × average_record_bytes
 retained_storage = ingest_rate_bytes_per_second × retention_seconds
@@ -69,48 +67,58 @@ effective_storage = raw_storage × replication_or_erasure_overhead × index_fact
 network_rate = messages_per_second × average_payload_bytes
 ```
 
-For queues:
+### Derive peak attempt demand and backlog drain under duplicates and retries
+
+Derive queue and worker math from supplied input variables. **Do not invent unmeasured worker concurrency, service latency, or per-worker throughput:** when a numeric drain time or worker count depends on an unmeasured latency, timeout, or concurrency limit, keep the formula symbolic in terms of the unknown variable, bound it as an explicit assumption range, or require measurement before claiming capacity sufficiency.
+
+Expand unique arrivals by duplicate deliveries and retry amplification:
 
 ```text
-net_drain_rate = consumer_capacity - producer_rate
-time_to_clear_backlog = backlog / net_drain_rate
+accepted_rate = unique_arrival_rate × (1 + duplicate_fraction)
+peak_accepted_rate = peak_unique_arrival_rate × (1 + duplicate_fraction)
+peak_attempt_demand = peak_accepted_rate × (1 + retry_amplification_factor)
+                    = peak_unique_arrival_rate + peak_duplicate_rate + peak_retry_rate
 ```
 
-The result is unbounded when consumer capacity does not exceed sustained producer rate. Use peak duration and burst absorption to size buffers; do not hide permanent under-capacity behind a large queue.
-
-Distinguish provisioned workers from available workers: subtract the stated failure allowance before multiplying per-worker capacity. Recompute the proposed remedy under the same failure scenario; healthy-state sizing cannot prove degraded recovery.
-
-Keep unique unfinished jobs separate from attempt-queue entries. With immediate retries, reconcile either accounting model over the same interval:
+Keep unique unfinished jobs separate from attempt-queue entries over any interval:
 
 ```text
 unfinished_job_growth = new_job_arrivals - successful_job_completions
-attempt_queue_growth = new_job_arrivals + retry_returns - attempt_departures
+attempt_queue_growth = new_job_arrivals + duplicate_arrivals + retry_returns - attempt_departures
 ```
 
-Do not add retry returns after already discounting attempt capacity to successful completions: that counts failures twice. During overload, required attempts are not attempts actually executed. Cross-check decision-driving totals against this flow balance and reconcile introductory estimates with the detailed calculation before recommending capacity.
+Do not add retry returns after already discounting attempt capacity to net successful completions; that counts failures twice. During overload, demanded attempts exceed executed attempts.
 
-Estimate:
+Subtract the stated worker/zone failure allowance before computing degraded drain capacity:
 
-- Active users and operations per journey.
-- Read/write/event mix and fan-out amplification.
-- Payload and object-size distributions, not only averages.
-- Daily/seasonal peaks and growth horizon.
-- Online and batch concurrency.
-- Retention, replicas, indexes, versions, logs, backups, and compaction overhead.
-- Cache hit/miss traffic and invalidation amplification.
-- Cross-zone or cross-region bandwidth and egress.
-- Headroom for failure, deployments, rebalancing, and noisy neighbors.
+```text
+available_workers = provisioned_workers × (1 - failure_allowance)
+degraded_attempt_capacity = available_workers × per_worker_attempt_rate
+net_attempt_drain_rate = degraded_attempt_capacity - (arrival_rate + duplicate_rate + retry_rate)
+time_to_clear_backlog = attempt_backlog / net_attempt_drain_rate
+```
 
-Use low/base/high ranges for uncertain inputs and show which variable dominates. Round results to architecture-scale precision.
+(Equivalently, in unique-job terms: `net_job_drain_rate = degraded_success_capacity - unique_arrival_rate` and `time_to_clear_backlog = unique_job_backlog / net_job_drain_rate`.) Drain time is unbounded whenever degraded completion capacity does not strictly exceed sustained arrivals plus retries. Recompute proposed remedies under the same degraded failure scenario and reconcile summary totals with this flow balance.
+
+Include in capacity models:
+
+- Active users, operations per journey, and read/write/event fan-out.
+- Payload size distributions (p50/p99), not only averages.
+- Daily/seasonal peaks, burst duration, and growth horizon.
+- Online/batch concurrency, retention, replicas, indexes, logs, backups, and compaction overhead.
+- Cache hit/miss ratios, invalidation amplification, and cross-zone/region egress.
+- Headroom for failures, deploys, rebalancing, and noisy neighbors.
+
+Use low/base/high ranges for uncertain inputs, name the dominant variable, and round to architecture-scale precision.
 
 ## Sanity-check the model
 
-- Recalculate using an independent dimension, such as users × actions and measured requests per second.
-- Compare peak throughput to the slowest mandatory stage, not just the edge tier.
-- Check units at every step and label decimal versus binary storage units.
-- Include replication, retry, fan-out, metadata, and index amplification.
-- Check that latency budgets leave time for network and serialization, not only storage.
-- Check availability against synchronous dependency depth and common failure domains.
-- Identify the threshold that would force a different partitioning, storage, or delivery strategy.
+- Cross-check from an independent dimension (e.g., active users × actions versus measured RPS).
+- Compare peak attempt demand against the slowest mandatory stage, not just the edge tier.
+- Verify units at every step and label decimal (`GB`, `MB/s`) versus binary (`GiB`, `MiB/s`).
+- Include replication, duplicate, retry, fan-out, metadata, and index amplification.
+- Confirm latency budgets cover network hops, queuing, and serialization as well as storage.
+- Check availability against synchronous dependency depth and shared failure domains.
+- State the load or data threshold that forces a new partitioning, storage, or delivery strategy.
 
-Present estimates as a decision model that maintainers can replace with telemetry, not as forecasts guaranteed by arithmetic.
+Present estimates as a decision model ready for telemetry calibration, not as arithmetic certainty.

@@ -1,115 +1,115 @@
 # Archetypes: foundations and platform
 
-> Use these compact prompts to expose the decisions behind a workload. They are not complete architectures and do not prescribe products.
+> Expose decisions, authoritative state owners, and failure boundaries before selecting products.
 
 ---
 
 ## 1. Scaling from one service to large traffic
 
-**Use when:** a workload must evolve from a simple deployment or the user asks how to scale an existing application.
+**Use when:** evolving a deployment under growing traffic, state, or tenant isolation demands.
 
-**Decisive questions:** What resource saturates first? Which state prevents horizontal replication? Is traffic read-, write-, compute-, storage-, or connection-heavy? Which failure domains and recovery targets matter now?
+**Decisive questions:** What saturates first? Which authoritative state blocks horizontal replication? Is load read-, write-, compute-, storage-, or connection-bound? What are failure domain and recovery targets?
 
-> **Invariants:** preserve request correctness and authoritative data while capacity or placement changes.
+> **Invariant:** request correctness and single authoritative state ownership hold across capacity, cache, or placement changes.
 
-**Scale axes:** request rate, concurrent connections, data set and working-set size, background work, tenants, regions, and release frequency.
+**Scale axes:** QPS, connections, working-set bytes, background jobs, tenants, regions, release cadence.
 
-**Failure prompts:** cache stampede, database connection exhaustion, shared-state bottleneck, retry storm, load-balancer health error, replica lag, hot tenant, and rebalancing load.
+**Failure prompts:** cache stampede, DB connection exhaustion, shared-state lock contention, retry storm, health-check cascade, replica lag stale reads, hot tenant, rebalance overload.
 
-**Trade-offs:** vertical scale versus partitioning; stateful versus stateless compute; read replicas versus caching; synchronous versus queued work; shared platform versus cells. Add a component only after a measured or requirement-driven limit justifies its operational cost.
+**Trade-offs:** vertical scale vs partitioning; stateless compute vs pinned state; read replicas vs cache invalidation; synchronous work vs bounded queues; shared cluster vs cellular isolation. Add tiers only when a measured or requirement-derived limit justifies operational cost.
 
 ---
 
 ## 2. Back-of-the-envelope estimation
 
-**Use when:** capacity, feasibility, cost, or a technology threshold depends on magnitude.
+**Use when:** capacity, feasibility, cost, or architecture boundaries depend on magnitude.
 
-**Decisive questions:** Which result could change the architecture? What are low/base/high input ranges? What is the peak factor and growth horizon? What amplification comes from fan-out, retries, replicas, indexes, or versions?
+**Decisive questions:** Which threshold changes architecture? What are low/base/high input ranges, peak multipliers, and growth horizons? What amplification comes from fan-out, retries, replication, indexes, or compaction?
 
-> **Invariant:** units and assumptions remain visible and replaceable by telemetry.
+> **Invariant:** units, inputs, and amplification multipliers remain explicit and verifiable against telemetry.
 
-**Scale axes:** operations per second, concurrency, storage growth, bandwidth, queue drain, memory working set, and failure headroom.
+**Scale axes:** ops/s, concurrency, storage growth, bandwidth, queue drain capacity, working set, failover headroom.
 
-**Failure prompts:** average-only sizing, inconsistent units, false precision, missing peaks, undersized downstream stage, and ignoring recovery traffic.
+**Failure prompts:** average-only sizing, unit mismatch, false precision, unmodeled retry/recovery amplification, undersized downstream bottleneck.
 
-**Trade-offs:** model complexity versus decision value. Prefer a transparent range to an elaborate calculation built on invented inputs.
+**Trade-offs:** range model vs simulation. Derive queue and compute capacity from peak input plus retry and recovery drain multipliers rather than invented point estimates.
 
 ---
 
 ## 3. System design framework
 
-**Use when:** an architecture request is broad, ambiguous, or at risk of becoming a technology inventory.
+**Use when:** a request is broad, ambiguous, or risks becoming an ungrounded component list.
 
-**Decisive questions:** What decision and audience does the artifact serve? Which user journeys and quality attributes dominate? What must never be violated? Which constraints are fixed versus assumed?
+**Decisive questions:** Which decision and audience does this serve? Which journeys and SLOs dominate? Who owns each mutable state? Which constraints are fixed vs assumed?
 
-> **Invariant:** every material component and decision traces to a requirement or accepted risk.
+> **Invariant:** every component traces to an invariant, authoritative owner, requirement, or explicit risk boundary.
 
-**Scale axes:** organizational as well as technical—teams, ownership, release cadence, operating capacity, and migration horizon.
+**Scale axes:** traffic, data, teams, ownership boundaries, release cadence, operational maturity, migration horizon.
 
-**Failure prompts:** premature decomposition, unprioritized NFR lists, no end-to-end flow, absent alternatives, happy-path-only diagrams, and no launch evidence.
+**Failure prompts:** premature decomposition, unprioritized NFR lists, missing authoritative owner, happy-path diagrams, unproven guarantees lacking a fault schedule or test oracle.
 
-**Trade-offs:** completeness versus focus. Cover the whole lifecycle but deepen only the decisions that can change the outcome.
+**Trade-offs:** breadth vs depth. Cover lifecycle briefly; spend depth on contested invariants, violating event sequences, and simple baselines.
 
 ---
 
 ## 4. Rate limiter
 
-**Use when:** protect capacity, enforce entitlement, control abuse, or provide fairness.
+**Use when:** protecting capacity, enforcing entitlements, curbing abuse, or isolating noisy neighbors.
 
-**Decisive questions:** What identity and resource are limited? Is the policy a hard entitlement or protective control? Where must it be enforced? How much burst is allowed? What happens during limiter or clock failure?
+**Decisive questions:** What authenticated actor and resource scope define the key? Hard entitlement cap or load shedding? Where lives the authoritative counter? Behavior on limiter or clock failure?
 
-> **Invariants:** a principal cannot exceed the defined policy beyond an explicit tolerance; critical traffic is not starved by noisy neighbors.
+> **Invariant:** an authenticated principal cannot exceed policy beyond a bounded sync tolerance; noisy neighbors cannot starve protected traffic.
 
-**Scale axes:** checks per second, number of active keys, policy update rate, geographic distribution, and cardinality of dimensions.
+**Scale axes:** checks/s, active keys, policy churn, edge POPs, dimension cardinality.
 
-**Failure prompts:** spoofed identity, hot keys, counter loss, clock skew, inconsistent edge decisions, limiter dependency outage, memory growth, and retry amplification after rejection.
+**Failure prompts:** spoofed identity, hot-key contention, counter outage, clock skew drift, split edge counters exceeding global cap, retry storm on `429`.
 
-**Trade-offs:** token bucket for controlled bursts; fixed windows for simplicity but boundary spikes; sliding logs for precision at high storage cost; approximate counters for scale. Define fail-open/fail-closed per operation and expose remaining quota/reset semantics only when useful and safe.
+**Trade-offs:** token bucket (burst control) vs fixed window (simple, boundary double-burst) vs sliding log (exact, high memory); local edge batching vs centralized atomic counters. Bind keys to verified identity within the issuer contract; define fail-open vs fail-closed per endpoint.
 
 ---
 
 ## 5. Consistent placement and hashing
 
-**Use when:** membership changes must move less state or requests need deterministic placement.
+**Use when:** membership changes must minimize state movement or route keys deterministically to live owners.
 
-**Decisive questions:** Is this routing, ownership, cache placement, or replica placement? What is the failure domain? How skewed are key and node weights? Who publishes membership and at what consistency?
+**Decisive questions:** Stateless routing, soft cache, or authoritative partition ownership? Who is the membership authority? How are skewed keys and failure domains weighted? When can a new owner serve traffic?
 
-> **Invariants:** a key resolves to the intended live owners under a known membership version; replicas span required failure domains.
+> **Invariant:** each key resolves to one authoritative owner (or zone-diverse replica set) under a monotonically versioned membership epoch.
 
-**Scale axes:** nodes, keys, replicas, membership churn, and state transferred per change.
+**Scale axes:** nodes, keys, replicas, membership churn, state transfer bytes/s.
 
-**Failure prompts:** stale membership, correlated replica placement, single hot key, uneven virtual nodes, thundering rewarm, and simultaneous recovery/rebalance.
+**Failure prompts:** dual owners under stale epoch, correlated rack/zone placement, hot key overloading one ring segment, cold-cache stampede on topology change, rebalance saturating foreground I/O.
 
-**Trade-offs:** ring hashing, rendezvous hashing, directory routing, or static ranges. Hashing reduces movement; it does not solve hot entities, metadata authority, or state-transfer correctness.
+**Trade-offs:** virtual-node ring vs rendezvous hashing vs directory/range coordinator. Hashing reduces movement; authoritative state requires epoch fencing and completed state transfer before activating a new owner.
 
 ---
 
 ## 6. Distributed key-value store
 
-**Use when:** access is primarily by key and availability, latency, data size, or geographic placement exceeds a single-node store.
+**Use when:** key access outgrows one node in throughput, footprint, fault tolerance, or geography.
 
-**Decisive questions:** Key and value limits? Required read/write consistency? Conflict policy? Scan or secondary-index needs? Durability and recovery scope? Tenant and hotspot distribution?
+**Decisive questions:** Read/write consistency and durability contract? Who arbitrates write order per partition? Conflict, secondary lookup, and scan policy? What bounds repair and compaction impact?
 
-> **Invariants:** acknowledged-write semantics are explicit; version/conflict resolution never silently violates domain correctness.
+> **Invariant:** acknowledged writes survive promised fault domains; conflict resolution or leader fencing never silently drops committed state.
 
-**Scale axes:** keys, bytes, operations, partitions, replicas, tombstones, compaction, and repair bandwidth.
+**Scale axes:** keys, bytes, ops/s, partitions, replicas, tombstones, compaction and repair bandwidth.
 
-**Failure prompts:** split brain, replica lag, hinted-handoff backlog, tombstone resurrection, read-repair surge, compaction stalls, hot partitions, disk loss, and corrupted replicas.
+**Failure prompts:** split-brain leaders, stale replica reads, hinted-handoff backlog, tombstone resurrection after delayed repair, compaction stall, hot partition skew, bit rot.
 
-**Trade-offs:** leader-based versus leaderless replication; strong versus tunable/eventual reads; LSM versus B-tree-style write/read amplification; range versus hash partitioning. Domain-level conflicts may require a single owner even when the storage engine can merge versions.
+**Trade-offs:** single-leader lease/epoch replication vs leaderless quorum + conflict resolution (LWW/CRDT); LSM write throughput vs B-tree read predictability; hash vs range partitioning. Enforce single-owner serialization when domain invariants forbid concurrent merge.
 
 ---
 
 ## 7. Unique identifier generation
 
-**Use when:** IDs must be generated across nodes, regions, or disconnected clients.
+**Use when:** generating unique IDs across distributed nodes, regions, or offline clients.
 
-**Decisive questions:** Uniqueness scope and lifetime? Sortability? Offline generation? Predictability or enumeration risk? Length and representation? Can generation pause during clock or coordination failure?
+**Decisive questions:** Uniqueness scope and lifetime? Time-sortable, non-enumerable, or offline-generatable? Bit budget? Can generation block when clocks regress or leases expire?
 
-> **Invariants:** no duplicate within the promised scope; ordering is promised only within the defined boundary.
+> **Invariant:** no two issued IDs collide within the namespace; ordering holds only within one issuing authority or bounded clock window.
 
-**Scale axes:** IDs per second, generator nodes/regions, lifetime, clock resolution, and namespace count.
+**Scale axes:** IDs/s per node, generator nodes/regions, bit length, clock resolution, lease renewal rate.
 
-**Failure prompts:** clock rollback, node-ID reuse, sequence overflow, coordinator outage, information leakage, hot ordered index, and format migration.
+**Failure prompts:** NTP clock rollback duplicates, worker-ID reuse after crash, per-tick sequence overflow, coordinator outage, sequential ID enumeration leak, B-tree right-edge hotspot.
 
-**Trade-offs:** random IDs favor decentralization; time-sortable IDs improve locality but reveal time and require rollback handling; database sequences are simple within one authority; range allocation improves availability but creates unused gaps. Do not equate approximate chronological order with causal or transactional order.
+**Trade-offs:** random UUID (decentralized, poor index locality) vs time-prefixed Snowflake/ULID (locality, requires worker-ID lease + clock-rollback fence) vs DB/range allocator. Fence clock regression by stalling or advancing a persisted epoch counter; never equate timestamp prefix order with causal or transactional order.

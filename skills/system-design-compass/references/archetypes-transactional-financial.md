@@ -1,77 +1,73 @@
 # Archetypes: transactional and financial systems
 
-> These workloads are dominated by correctness, auditability, and recovery. State business invariants before optimizing throughput. Do not treat these prompts as financial, legal, or regulatory advice.
+> Prioritize invariants, authoritative owners, auditability, and deterministic recovery before throughput.
 
 ---
 
 ## 22. Reservation system
 
-**Critical questions:** resource and time granularity, hold versus confirmed booking, overbooking policy, payment boundary, cancellation, inventory source of truth, search freshness, and peak release events.
+**Critical questions:** bucket granularity, hold TTL vs confirmed booking, overbooking cap, payment boundary, cancellation/refund policy, authoritative inventory owner, retry identity scope.
 
-> **Invariant:** confirmed allocation never exceeds the permitted inventory for the resource/time bucket; retries do not create duplicate bookings or charges.
+> **Invariant:** the **authoritative inventory/reservation owner** enforces `confirmed_bookings + active_holds <= permitted_capacity` per `(resource_id, time_bucket)`; **scoped retry identity within the issuer contract** `(actor_id, resource_scope, idempotency_key, payload_hash)` prevents duplicate bookings/charges and caller keys becoming tenant-wide identities.
 
-**Scale axes:** properties/resources, availability rows, searches, holds, bookings, date ranges, and hotspot events.
+**Scale axes:** resources, date-bucket rows, search-to-book ratio, hold concurrency, flash-sale skew.
 
-**Failure prompts:** concurrent last-item booking, expired hold race, payment succeeds after hold expiry, stale search cache, duplicate request, cancellation/refund divergence, and shard hotspot.
+**Failure prompts:** **concurrent double-consumption race** on last unit, late payment after hold expiry, crash after payment capture before booking commit, caller-key collision across actors/tenants, stale search cache.
 
-**Trade-offs:** optimistic conditional update, pessimistic lock, serial inventory owner, or intentional overbooking; precomputed availability versus authoritative confirmation; saga/compensation across payment. Make hold expiry and state transitions explicit and reconcile external payment outcomes.
+**Trade-offs:** serial partition owner or conditional update (`UPDATE ... WHERE available >= qty`) on `(resource_id, date_bucket)` committed with hold row + scoped idempotency record; derived caches for search only. Reject reused keys with altered payloads. **Concrete crash/race test oracle:** fire $N$ concurrent last-unit holds/confirms, replay retries (matching vs altered actor/payload), and crash workers between payment capture and booking commit; pass requires zero over-allocation, one booking/refund per scoped retry identity, and zero cross-actor collisions.
 
 ---
 
 ## 25. Real-time leaderboard
 
-**Critical questions:** global or segmented boards, ranking function, ties, update freshness, top-N versus rank-around-user, season reset, cheating, and historical audit.
+**Critical questions:** global vs segmented boards, scoring rule, tie policy, top-N vs rank-around-user, season reset, anti-cheat, audit.
 
-> **Invariant:** a score event affects the intended player/season at most once and ranking uses a deterministic tie policy.
+> **Invariant:** score-event ledger authority applies each scoped `(season_id, event_id, player_id)` transition at most once; ranking views resolve ties deterministically.
 
-**Scale axes:** score events, active players, boards/segments, top-N reads, rank queries, season history, and hot competitions.
+**Scale axes:** score events/s, active players, segments, top-N/rank queries, hot competitions.
 
-**Failure prompts:** duplicate score, out-of-order correction, hot board, expensive global rank, season-boundary race, cache divergence, and malicious score submission.
+**Failure prompts:** duplicate replay, out-of-order revocation, hot board contention, $O(N)$ global rank scan, season-boundary race, cache/ledger drift.
 
-**Trade-offs:** ordered set/index for active boards; partitioned boards with merge for global top-N; event log plus materialized rank; exact versus approximate rank; synchronous versus bounded-lag update. Keep authoritative scoring evidence separate from rebuildable ranking views.
+**Trade-offs:** append-only score log authority plus sorted set (or partitioned segment trees); exact order-statistic rank vs approximate buckets. Separate score authority from rebuildable views.
 
 ---
 
 ## 26. Payment system
 
-**Critical questions:** pay-in, pay-out, refund, reversal, capture, multi-party split, currencies, provider boundary, settlement, dispute, and audit obligations.
+**Critical questions:** pay-in/pay-out, auth vs capture, refunds/reversals, splits, minor units, PSP boundary, T+N settlement, disputes.
 
-> **Invariant:** every monetary state transition is authorized, idempotent, balanced where a ledger applies, attributable, and reconcilable to external statements.
+> **Invariant:** every monetary transition is authorized, guarded by scoped retry identity and monotonic intent state, booked in an immutable balanced double-entry ledger, and reconciled against external settlement statements.
 
-**Scale axes:** attempts, successful transactions, provider calls, webhooks, ledger entries, settlement files, currencies, merchants, and disputes.
+**Scale axes:** intents/s, PSP calls, webhooks, ledger postings, settlement files, merchants, disputes.
 
-**Failure prompts:** client retry, timeout after provider success, duplicate/out-of-order webhook, partial capture/refund, credential compromise, provider outage, rounding error, settlement mismatch, and replayed request.
+**Failure prompts:** timeout after PSP success, **duplicate or out-of-order provider webhooks** (`AUTHORIZED` after `CAPTURED`/`REFUNDED`), crash between PSP response and local commit, partial refund race, settlement drift missed by API polling.
 
-**Trade-offs:** hosted provider surface versus direct handling; payment intent state machine; idempotency record and result retention; append-only double-entry ledger; asynchronous provider events; reconciliation as a control loop. Never infer failure from timeout, mutate historical ledger entries, or use floating point for monetary amounts.
-
-Use the shared [external-outcome mechanism](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction) for provider ambiguity, statement reconciliation and recovery.
+**Trade-offs:** persisted intent state machine (`CREATED -> IN_FLIGHT -> AUTHORIZED -> CAPTURED -> SETTLED`) with deterministic per-attempt PSP keys; **sequence/state guards against duplicate or out-of-order webhooks**; **stuck-intent recovery sweep** querying PSP outcome before retrying/expiring `IN_FLIGHT` intents; **external statement / settlement reconciliation** (ingesting PSP/bank T+N settlement files beyond API polling) with owned quarantine repair; and **settled transaction reversal and refund ledger entries** booked strictly as compensating double-entry postings without mutating history. See [external-outcome mechanism](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction).
 
 ---
 
 ## 27. Digital wallet and ledger
 
-**Critical questions:** stored value or view over external funds, account model, transfer finality, overdraft, holds, currencies, offline behavior, throughput per account, and regulatory boundary.
+**Critical questions:** stored value vs pass-through view, account partitions, holds, finality, overdraft, hot accounts, funding/payout boundary.
 
-> **Invariant:** value is conserved across balanced postings; an account cannot spend beyond the defined available balance; each command has one durable outcome.
+> **Invariant:** ledger journal authority conserves value across zero-sum double-entry postings, forbids spending beyond available balance (`posted - active_holds >= 0`), and produces one durable outcome per scoped command identity.
 
-**Scale axes:** accounts, transfers, postings, hot accounts, balance reads, audit history, reconciliation, and snapshots.
+**Scale axes:** accounts, transfers/s, postings/s, hot accounts, balance reads, reconciliation volume.
 
-**Failure prompts:** concurrent spend, duplicate transfer, partial cross-shard posting, stale balance, out-of-order reversal, unbalanced recovery, and snapshot/log divergence.
+**Failure prompts:** concurrent double-spend race, partial cross-shard posting, **duplicate or out-of-order funding/payout webhooks**, stuck cross-shard hold, row mutation, snapshot/journal drift.
 
-**Trade-offs:** single-writer account partitions; append-only double-entry journal; cached/materialized balances verified against postings; reservation/hold workflow; deterministic command ordering; cross-partition coordination versus asynchronous settlement. Treat event sourcing, CQRS, consensus, or two-phase protocols as mechanisms with operational costs, not correctness slogans.
-
-When provider operations or events affect wallet balances, resolve that boundary with the shared [external-outcome mechanism](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction); local balance conservation alone is insufficient.
+**Trade-offs:** single-writer account partition or serializable ledger transaction; hold-then-capture for cross-shard/external transfers; **sequence/state guards against duplicate or out-of-order webhooks**; **stuck-intent recovery sweep** resolving in-flight transfers before release/retry; **external statement / settlement reconciliation** comparing internal postings against bank/custodian settlement statements (beyond API polling); and **settled transaction reversal and refund ledger entries** booked exclusively as compensating contra-postings. Resolve provider events via [external-outcome mechanism](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction).
 
 ---
 
 ## 28. Stock exchange and matching
 
-**Critical questions:** order types, price-time or other priority, amend/cancel semantics, market sessions, risk checks, market-data levels, determinism, throughput/latency, and regulatory audit.
+**Critical questions:** order types, price-time priority, amend/cancel atomicity, risk limits, L1/L2/L3 market data, determinism, failover, audit.
 
-> **Invariant:** each instrument's accepted commands have one deterministic total order; executions obey matching priority and conserve quantity; published results are traceable to the command sequence.
+> **Invariant:** each instrument's authoritative sequencer assigns one deterministic total order to commands; matching conserves quantity under strict priority and emits reproducible executions.
 
-**Scale axes:** instruments, orders/messages per second, burst per instrument, order-book depth, market-data subscribers, and audit retention.
+**Scale axes:** instruments, orders/cancels/s, burst skew, book depth, subscribers.
 
-**Failure prompts:** duplicate order, sequencer failover, leader split, nondeterministic replay, slow consumer, market-data gap, risk-service delay, hot instrument, and clock disagreement.
+**Failure prompts:** duplicate order on retry, sequencer split-brain on failover, nondeterministic clock/float in matching loop, slow subscriber stalling execution, risk bypass.
 
-**Trade-offs:** partition by instrument; single-threaded deterministic matching loop per partition; replicated ordered command log; snapshots plus replay; binary versus general protocols; in-memory book with durable journal; separate execution and market-data paths. Keep consensus and storage off the inner loop only when acknowledgement and failover semantics remain explicit. Prefer deterministic recovery over active-active conflict resolution for one order book.
+**Trade-offs:** partition by instrument with single-threaded deterministic matching loop; replicated command log with epoch-fenced failover; in-memory book with snapshots + replay; decoupled ring-buffer broadcast for market data and clearing.

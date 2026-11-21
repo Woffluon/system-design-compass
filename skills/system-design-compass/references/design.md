@@ -2,82 +2,79 @@
 
 > Use this mode for a new system, a major redesign, or a request whose architecture has not been established.
 
-## Establish the decision frame
+## Establish the decision frame and explicit assumptions
 
-Start with the business outcome and the decisions the artifact must enable. Identify the primary readers, delivery horizon, team and operational constraints, current platform commitments, and the cost of failure.
+Start with the business outcome, primary readers, delivery horizon, team and operational constraints, platform commitments, and cost of failure.
 
-Inspect supplied repositories and documents before asking questions. Ask a concise batch only for unknowns that could change a major boundary or technology class, usually:
+Inspect supplied repositories and documents before asking questions. Ask a concise batch only for unknowns that change a major boundary or technology class:
 
-- Which user journeys are essential and which are explicitly out of scope?
-- What scale, geography, growth, latency, availability, durability, and recovery targets matter?
-- What data is sensitive, regulated, financially material, or impossible to recreate?
-- What ordering, uniqueness, freshness, or consistency guarantees are business invariants?
-- Which existing systems, providers, skills, deadlines, or budgets constrain the design?
+- Essential user journeys and explicit non-goals.
+- Scale, geography, growth, latency, availability, durability, and RTO/RPO targets.
+- Sensitive, regulated, financially material, or irreplaceable data.
+- Business invariants for ordering, uniqueness, freshness, and consistency.
+- Existing systems, providers, team skills, deadlines, and budgets.
 
-If answers are unavailable, choose conservative but reversible assumptions, label them, and state how to validate them. Never invent a compliance regime, an exact load, or a business-critical guarantee.
+When answers are unavailable, choose conservative reversible assumptions, label them, and state how to validate them. Never invent a compliance regime, exact load, or business-critical guarantee.
 
-## Build the design in decision order
+## Build the architecture in decision order
 
-### 1. Bound the system
+### 1. Bound the system and name authoritative state owners
 
-Describe actors, external systems, trust boundaries, ownership, core journeys, and non-goals. Name the system of record for each important entity. Avoid decomposing into services before boundaries and ownership justify it.
+Define actors, external systems, trust boundaries, core journeys, and non-goals. Name the single **authoritative state owner** (system of record) for each critical entity and state transition. Do not decompose into services before ownership and failure boundaries justify it.
 
 ### 2. Make quality attributes measurable
 
-Prioritize rather than merely list them. Translate words such as "fast," "reliable," and "real time" into indicators, targets, measurement points, and windows. Capture RTO/RPO when recovery matters. Use [requirements and estimation](requirements-estimation.md) for the full method.
+Prioritize quality attributes and translate vague terms ("fast," "reliable," "real time") into SLIs, targets, measurement points, windows, and RTO/RPO using [requirements and estimation](requirements-estimation.md).
 
-### 3. Estimate the shape of demand
+### 3. Estimate decision-driving demand
 
-Estimate peak read/write/event rates, concurrency, object or message size, retention, storage growth, bandwidth, and background amplification. Use ranges when the inputs are uncertain. **Calculate only figures that can influence a decision.**
+Estimate peak read/write/event rates, concurrency, payload size, retention, storage growth, bandwidth, and retry or background amplification. Use ranges for uncertain inputs and **calculate only figures that can change a boundary or technology choice.**
 
-### 4. Define contracts and invariants
+### 4. Define contracts, invariants, and consistency boundaries
 
-Specify the commands, queries, events, data ownership, lifecycle, and idempotency model that make the primary journeys work. State where consistency is required and where staleness is acceptable. Use [interfaces and data](interfaces-data.md).
+Specify commands, queries, events, lifecycle transitions, authorization scope, and idempotency identity. State which transitions require atomic or strong enforcement by the authoritative state owner and where bounded staleness is acceptable. Use [interfaces and data](interfaces-data.md).
 
-### 5. Propose the minimum viable architecture
+### 5. Start from the simplest sufficient baseline
 
-Start with the fewest independently operated components that satisfy the current requirements. Describe capabilities before products: request routing, durable state, asynchronous work, caching, search, object storage, or stream processing. Split components only for a concrete reason such as distinct ownership, scaling, isolation, security, data semantics, or release cadence.
+Propose the fewest independently operated components that satisfy current requirements. Specify capabilities before products: routing, durable state, asynchronous work, caching, search, object storage, or stream processing. Commit to one **simple baseline** flow and justify any extra component by a required guarantee, isolation boundary, or measured limit the existing authoritative owner cannot provide—never by speculative scale alone.
 
-Trace at least one write path and one read path end to end. Include authentication/authorization points, persistence boundaries, asynchronous handoffs, and response behavior.
+Trace at least one write path and one read path end to end across authentication/authorization checks, persistence boundaries, asynchronous handoffs, and client responses.
 
-### 6. Resolve the hard decisions
+### 6. Stress-test hard decisions with violating sequences and baseline evidence
 
 For each consequential choice:
 
-1. State the decision and the requirement it serves.
-2. Compare at least two credible options, including keeping the simpler baseline when credible.
-3. Evaluate correctness, latency, throughput, availability, recovery, operability, cost, security, and migration impact as relevant.
-4. Record the chosen option, accepted downside, and a measurable reconsideration trigger.
+1. State the decision, the invariant, the **authoritative state owner**, and the requirement served.
+2. Construct a concrete **violating event sequence** (concurrent duplicate requests, crash between local commit and external effect, timeout with ambiguous outcome, stale owner write, or conflicting update) that breaks a naive design.
+3. Compare at least two credible options against the **simple baseline** with quantitative or mechanistic evidence across correctness, latency, throughput, availability, recovery, operability, cost, security, and migration impact.
+4. Record the chosen mechanism, enforcement boundary, accepted downside, and measurable reconsideration trigger.
 
-Do not list technologies without connecting them to a requirement. Do not claim horizontal scalability without identifying the partition key, coordination point, and state movement behavior.
+Connect every technology choice to a requirement. Never claim horizontal scalability without naming the partition key, coordination point, and state movement behavior.
 
-### 7. Design for production
+### 7. Design for failure, overload, and recovery
 
-Walk through dependency timeout, overload, partial failure, data corruption, region or zone loss when relevant, bad deployment, credential compromise, and operator error. Define degraded behavior, retry ownership, backpressure or shedding, recovery, observability, and escalation. Use [production readiness](production-readiness.md).
+Walk through dependency timeouts, overload, partial failure, data corruption, zone/region loss, bad deployment, credential compromise, and operator error. Define degraded behavior, retry ownership, backpressure or shedding, repair ownership, observability, and escalation using [production readiness](production-readiness.md).
 
-### 8. Make delivery safe
+### 8. Define safe delivery and rollback boundaries
 
-Describe implementation slices, interface compatibility, data migration, shadow or canary validation, rollback boundaries, and success metrics. Separate the target architecture from the smallest safe next step.
+Separate the target architecture from the smallest safe next slice. Specify interface compatibility, data migration, shadow or canary verification, quantitative abort thresholds, and an executable rollback action using [evolution](evolve.md). A feature flag or canary without a verified state and external-effect rollback boundary does not explain recovery from a bad deployment.
 
-Select one viable baseline and keep alternatives out of its committed flow. Justify an additional component by a required capability the existing owner cannot provide, not unknown scale alone. For deployment, name an executable rollback action; use [evolution](evolve.md) for its state and external-effect boundary. A canary or feature flag without a rollback action does not explain recovery from a bad deployment.
+## Match deliverable format to decision scope
 
-## Choose the output size
+- **ADR**: one narrow architectural decision.
+- **Concise architecture note**: a bounded component or integration.
+- **Full RFC**: multiple interfaces, data boundaries, quality attributes, or teams.
+- **Decision-complete implementation plan**: execution handoff.
 
-- Use an ADR when one narrow decision is the point.
-- Use a concise architecture note for a bounded component or integration.
-- Use a full RFC when several interfaces, data boundaries, quality attributes, or teams are involved.
-- Use a decision-complete implementation plan when the user needs execution handoff.
-
-See [deliverables and diagrams](deliverables-diagrams.md) for contracts. Omit sections that do not affect the decision; never omit a critical invariant, major risk, or verification method merely to be brief.
+See [deliverables and diagrams](deliverables-diagrams.md) for contracts. Omit sections that do not change a decision; never omit a critical invariant, violating sequence, major risk, or verification method for brevity.
 
 ## Completion gate
 
 A design is ready for review when a reader can answer:
 
-- What problem and load is this built for?
-- What must never be violated?
-- Where does data live, move, and become authoritative?
-- Why is this architecture simpler or safer than the credible alternatives?
-- What happens during overload, dependency failure, and recovery?
-- How will the team observe, launch, roll back, and pay for it?
-- Which assumptions still need evidence before implementation?
+- What problem, invariant, and load is this built for?
+- Who is the authoritative state owner for each critical entity, and what violating event sequences are prevented?
+- Why does this architecture beat the simple baseline or other credible options with evidence?
+- What happens during overload, dependency failure, ambiguous external outcomes, and recovery?
+- How will the team observe, launch, roll back within safe state boundaries, and pay for it?
+- Which labeled assumptions still require experimental or production evidence?

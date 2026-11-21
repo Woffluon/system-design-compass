@@ -1,27 +1,36 @@
 # Prove a consequential decision
 
-> Read when a proposed mechanism appears correct but its recovery, validation or operator response is still unspecified. Reuse the actual system's invariants and constraints; do not introduce a new architecture to make testing easier.
+> Read when recovery, falsification, or operator response is unverified. Test actual system invariants without a test-only architecture.
 
 ## Turn a claim into observable evidence
 
-Choose the event sequence that could falsify the guarantee. State the initial data, injected fault or competing operation, observation boundary and expected outcome. Check durable business state or externally visible effects, not merely a successful API response or lock acquisition. Identify which assumption the result settles. A suggested experiment is not evidence that it passed.
+Replace vague wishes ("test retries") with a **concrete fault schedule** (initial state, exact injection point, competing operations, recovery trigger) and an **observable pass/fail business oracle** (durable business state and external effects at a named boundary, not just HTTP 200 or lock acquisition). Name the settled assumption; counterexamples or proposed tests are not passing evidence.
 
 ## Ambiguous delivery and terminal repair
 
-**Evidence needed:** durable operation identity, remote deduplication capability, retry horizon, outcome query and repair owner. Use [interfaces/data](interfaces-data.md) for contract semantics.
+**Inputs:** durable operation identity, remote deduplication contract, lease TTL, retry horizon, outcome query, repair owner ([interfaces/data](interfaces-data.md)).
 
-> **Counterexample:** the receiver applies an effect; its response is lost; the worker crashes before recording completion; a replacement retries. Local deduplication cannot prove a single remote effect.
+**Fault schedule (combine for external side effects, queues, and leases):**
+1. **Crash after remote success before local record:** commit remote effect, kill worker before local record persists, let replacement retry.
+2. **Ambiguous timeout:** drop response past deadline while remote outcome is unknown.
+3. **Lease expiry / worker overlap:** stall worker past lease TTL while a replacement claims the same identity concurrently.
 
-**Experiment:** repeat that sequence with overlapping workers and the same identity. With cooperative receiver deduplication, assert one visible effect and convergence of local status. Without it, measure the permitted duplicates and preserve ambiguity; do not claim exactly-once behavior.
+**Pass/fail business oracle:** with remote deduplication or fencing, assert one external effect and one converged local status across all three faults. Otherwise, assert ambiguous/overlapping attempts halt into outcome query or reconciliation with zero silent duplicates; never claim exactly-once.
 
-**Recovery:** exhaustion must expose an actionable record, not hide work in a dead-letter queue. Name the responsible role, evidence needed to reconcile and when replay is permitted. Unknown outcomes must not be treated as proven failures; replay of a non-deduplicating effect may repeat it.
+**Recovery:** retry exhaustion is not completion. Route exhausted or ambiguous records to a named repair owner with reconciliation evidence and replay rules; never auto-replay unknown outcomes as failures.
 
 ## Queue recovery and operator action
 
-**Evidence needed:** job arrival rate, attempt capacity at the actual payload distribution, retry work, failed-worker capacity, backlog age and completion/drain objective. Keep jobs and attempts in consistent units; use [estimation](requirements-estimation.md) for the demand model.
+**Inputs:** arrival rate, attempt capacity at production skew, retries, worker-loss capacity, oldest uncompleted backlog age, drain target in consistent units ([estimation](requirements-estimation.md)).
 
-> **Counterexample:** a healthy queue grows indefinitely after worker loss even though storage remains available. Buffer size does not establish positive drain capacity.
+**Fault schedule and oracle:** inject burst, transient errors, and worker loss under continuing normal arrivals; restore workers and measure completions, attempt rate, oldest uncompleted business backlog age, and drain time to steady state. Pass only if drain time and backlog age meet the recovery target with headroom (free storage never proves positive drain capacity).
 
-**Experiment:** inject a finite burst, transient failures and worker loss together; restore the worker and measure sustained completions, attempt rate, oldest age and time to drain while normal arrivals continue. Accept only the stated recovery objective with headroom; do not stop measurement at the end of the burst.
+**Action:** alert when oldest uncompleted backlog age breaches completion budget or drain capacity trails arrivals. Assign an owner and quantitative threshold to restore capacity, throttle admission, or shed optional work; label provisional targets when no SLO exists.
 
-**Action:** alert when oldest age exceeds the agreed completion budget, or when measured capacity cannot drain arrivals. Name an owner and a bounded action: restore capacity, throttle admission or defer optional work. If the budget is absent, expose it as a decision input or label a provisional target; never invent an established SLO.
+## Migration restart, repair, and mixed-version drills
+
+**Fault schedule:** kill and restart backfill/replication workers mid-flight under concurrent traffic across old and new code (`mixed-version reads and writes`).
+
+**Pass/fail business oracle:**
+- **Restart/repair:** resumed checkpoints and repair converge to zero missing, duplicate, or drifted records.
+- **Mixed-version reads and writes:** old code reading new/migrated data and **old code writing** alongside new code preserve invariants without silent field loss, schema errors, or unreplicated fallback writes that break rollback.

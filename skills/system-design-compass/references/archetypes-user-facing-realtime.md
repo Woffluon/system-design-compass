@@ -1,161 +1,164 @@
 # Archetypes: user-facing and realtime systems
 
-> Use these prompts to identify workload-specific invariants, scale axes, and failure behavior. Combine with the shared design references; do not treat an archetype as a reference architecture.
+> Identify invariants, authoritative owners, scale axes, and failure boundaries. Combine with shared references.
 
 ---
 
 ## 8. URL shortener
 
-**Critical questions:** custom aliases, expiry, update/delete, abuse screening, redirect latency, analytics freshness, and geographic reach.
+**Critical questions:** custom aliases, TTL/expiry, target mutation/deletion, abuse screening, redirect latency, analytics freshness, regional reads.
 
-> **Invariant:** a live short code resolves deterministically to the authorized destination version; custom codes are unique.
+> **Invariant:** mapping authority resolves each live code deterministically to one authorized target version; custom aliases enforce strict uniqueness.
 
-**Scale axes:** create rate, redirect rate, active codes, cache working set, analytics events, and malicious scans.
+**Scale axes:** create QPS, redirect QPS, active aliases, cache working set, click events, enumeration scans.
 
-**Failure prompts:** code collision, stale redirect cache, malicious destination, hot/viral code, enumeration, expired-link resurrection, analytics loss, and redirect loops.
+**Failure prompts:** alias collision on concurrent create, stale edge cache serving revoked/malicious URL, viral hot key, sequential enumeration, expired-code reuse race, redirect loop.
 
-**Trade-offs:** random versus sequence-derived codes; immutable versus editable targets; synchronous safety checks versus asynchronous moderation; strong primary mapping with derived analytics. Treat redirect serving and analytics as different criticality paths.
+**Trade-offs:** pre-allocated counter ranges vs random token with collision retry; immutable vs versioned targets; synchronous safe-browsing gate vs async takedown invalidation. Isolate redirect serving from async click analytics.
 
 ---
 
 ## 9. Web crawler
 
-**Critical questions:** allowed scope, freshness, politeness, robots handling, rendering, deduplication, content types, prioritization, and legal/safety constraints.
+**Critical questions:** crawl scope, freshness vs coverage, politeness (`robots.txt`, per-host rate), JS rendering, URL vs content dedup, poison defense.
 
-> **Invariant:** fetch behavior respects per-origin policy and does not create unbounded duplicate work.
+> **Invariant:** per-origin scheduler authority enforces politeness leases and bounded frontier dedup without unbounded re-fetch loops.
 
-**Scale axes:** discovered URLs, fetches per second, origins, content bytes, render cost, recrawl frequency, and frontier size.
+**Scale axes:** discovered URLs, fetches/s, origins, downloaded bytes, render slots, frontier size.
 
-**Failure prompts:** crawler traps, URL canonicalization errors, duplicate content, DNS/redirect abuse, slow origins, poison documents, frontier starvation, renderer exhaustion, and uncontrolled egress.
+**Failure prompts:** infinite URL traps, canonicalization mismatch, DNS/redirect SSRF abuse, slow origins tying up workers, parser crash on poison payload, renderer OOM, frontier starvation.
 
-**Trade-offs:** breadth versus freshness; per-host queues versus global priority; raw URL versus content deduplication; static fetch versus rendering. Isolate untrusted parsing and make the frontier durable, bounded, and replay-aware.
+**Trade-offs:** BFS coverage vs priority/freshness scoring; per-host leased queues vs global priority heap; URL fingerprint vs SimHash content dedup; static fetch vs selective rendering. Sandbox parsers and persist a replay-safe frontier.
 
 ---
 
 ## 10. Notification delivery
 
-**Critical questions:** channels, urgency, user preferences, provider limits, scheduling, deduplication, ordering, localization, and delivery-versus-read semantics.
+**Critical questions:** channels, urgency tiers, consent/quiet hours, provider quotas, scheduling, dedup key scope, ordering, delivery vs read state.
 
-> **Invariant:** accepted notifications follow consent/preferences and produce no more than the allowed visible effects.
+> **Invariant:** accepted notifications obey consent/preference authority and execute bounded sends per scoped `(notification_id, recipient, channel)` identity.
 
-**Scale axes:** recipients, fan-out, channel mix, scheduled bursts, templates, tokens/endpoints, retries, and provider quotas.
+**Scale axes:** recipients, fan-out, channel mix, scheduled bursts, retry multiplier under provider degradation, active tokens.
 
-**Failure prompts:** duplicate send, stale device token, provider outage, preference race, template/config error, thundering retry, quiet-hours violation, and unbounded dead letters.
+**Failure prompts:** **crash after remote provider success before local delivery record commit** causing duplicate resend, stale token, provider outage/throttling, preference race, thundering retry, quiet-hours breach, unowned DLQ growth.
 
-**Trade-offs:** synchronous acceptance with asynchronous delivery; per-recipient/channel idempotency; priority queues; provider isolation; delivery receipts as evidence rather than proof of user consumption. Separate critical transactional messages from bulk engagement traffic.
+**Trade-offs:** durable outbox acceptance before async dispatch; pre-send `IN_FLIGHT` record plus provider idempotency key (or provider status query before retry) to close the post-send crash window; transactional vs bulk queues. Size completion capacity for peak input times retry multiplier, and define an owned DLQ/exhaustion repair path (owner, alert threshold, replay/suppress action—exhaustion is not completion).
 
 ---
 
 ## 11. News feed
 
-**Critical questions:** ranking freshness, follow graph, privacy, fan-out latency, celebrity skew, deletes, pagination stability, and recommendation explainability.
+**Critical questions:** ranking freshness, follow/block graph authority, privacy, fan-out latency, celebrity skew, deletes, cursor stability.
 
-> **Invariant:** viewers see only authorized items; ordering and cursor semantics remain defined as the feed changes.
+> **Invariant:** viewers receive only items authorized by current graph/privacy authority, with deterministic cursor pagination across inserts and deletes.
 
-**Scale axes:** posts, followers, feed reads, candidate set, ranking features, fan-out amplification, and media references.
+**Scale axes:** write QPS, follower degree skew, read QPS, candidate pool, ranking features, media hydration.
 
-**Failure prompts:** celebrity fan-out, stale authorization, duplicate/missing pagination items, ranking dependency failure, deleted-content leakage, cache stampede, and backfill overload.
+**Failure prompts:** celebrity write fan-out stalling queues, stale block/privacy cache exposing revoked posts, duplicate/skipped pagination items, ranking timeout, deleted post remaining in timelines, cache stampede.
 
-**Trade-offs:** fan-out on write, fan-out on read, or hybrid by author class; precomputed versus query-time ranking; stable snapshot versus live cursor. Keep content authority separate from derived feed materializations and support repair/rebuild.
+**Trade-offs:** push fan-out on write vs pull on read vs hybrid by follower degree; materialized inbox IDs vs post authority store; snapshot cursor vs monotonic `(score, post_id)` token. Enforce authorization at read hydration and support timeline rebuild from authoritative stores.
 
 ---
 
 ## 12. Chat
 
-**Critical questions:** one-to-one/groups, devices, delivery/read semantics, offline history, attachment handling, ordering scope, presence accuracy, encryption, moderation, and retention.
+**Critical questions:** 1:1 vs large groups, multi-device sync, delivery/read receipts, offline history, attachments, ordering scope, presence fidelity, E2EE.
 
-> **Invariant:** a message has stable identity and membership authorization; promised ordering holds within the stated conversation boundary.
+> **Invariant:** conversation partition owner assigns stable identity and monotonic per-conversation sequence to each authorized message.
 
-**Scale axes:** concurrent connections, messages, groups, group fan-out, device sessions, history bytes, and presence updates.
+**Scale axes:** concurrent sessions, messages/s, group fan-out, devices/user, history bytes, presence churn.
 
-**Failure prompts:** reconnect storms, duplicate/out-of-order delivery, split membership view, hot large group, presence flapping, lost acknowledgements, attachment abuse, and region failover.
+**Failure prompts:** reconnect storm, duplicate/out-of-order frames, stale membership admitting removed user, hot mega-group fan-out, presence flapping, lost acks, region failover split.
 
-**Trade-offs:** stateful gateways with external session directory; per-conversation partitioning; server sequence versus client IDs; push delivery plus sync cursor; precise versus approximate presence. Define server accepted, delivered to device, and read as separate states.
+**Trade-offs:** stateful gateways with leased session directory; single-writer conversation sequencing vs client UUID + causal order; push wakeup plus pull cursor sync (`last_seen_seq`); exact vs lazy presence. Separate server-persisted, device-delivered, and user-read states.
 
 ---
 
 ## 13. Search autocomplete
 
-**Critical questions:** prefix/fuzzy behavior, locale, personalization, freshness, safety filtering, latency, top-k quality, and deletion obligations.
+**Critical questions:** prefix/fuzzy match, locale/tenant scope, personalization, freshness, safety blocklists, latency, takedown removal.
 
-> **Invariant:** suggestions respect policy and tenant/user visibility; ranking version and freshness are observable.
+> **Invariant:** completions obey tenant visibility and active safety/suppression rules, with observable index version and bounded suppression delay.
 
-**Scale axes:** queries per second, prefixes, vocabulary, update stream, languages, model/index size, and personalization dimensions.
+**Scale axes:** keystroke QPS, prefixes, vocabulary, query-log ingest, locales, edge cache size.
 
-**Failure prompts:** unsafe suggestion, stale deletion, hot prefixes, cache pollution, index rebuild gap, feedback poisoning, and rank instability.
+**Failure prompts:** unsafe/PII suggestion leak, blocked term surviving in cache, hot prefix overload, query-log poisoning, rebuild gap.
 
-**Trade-offs:** trie/FST/search index; offline aggregation plus streaming deltas; edge cache for common prefixes; global versus personalized ranking. Use bounded candidate generation before expensive ranking and keep a safe fallback.
+**Trade-offs:** compiled FST/trie snapshot vs inverted prefix index; batch build plus real-time suppression/delta overlay; client debouncing and prefix caching; global vs personalized re-rank. Enforce a real-time serving deny-list independent of batch rebuilds.
 
 ---
 
 ## 14. Video platform
 
-**Critical questions:** upload limits, formats, playback startup, quality adaptation, rights/privacy, moderation, geographic distribution, and processing deadline.
+**Critical questions:** upload limits/resumability, rendition ladder, startup latency, ABR, DRM/rights, moderation gate, CDN offload, transcode SLA.
 
-> **Invariant:** authorized viewers receive the intended asset/version; source and derivatives retain traceable identity and lifecycle.
+> **Invariant:** asset metadata authority exposes a video only after moderation and manifest readiness; derivatives trace to an immutable source version.
 
-**Scale axes:** uploads, source bytes, rendition amplification, transcode compute, watch bandwidth, catalog metadata, and viral skew.
+**Scale axes:** uploads, source bytes, transcode compute, renditions, egress bandwidth, viral skew.
 
-**Failure prompts:** incomplete multipart upload, duplicate transcode, poisoned media, orphaned derivatives, CDN miss storm, manifest inconsistency, rights change lag, and regional egress spike.
+**Failure prompts:** abandoned multipart upload, duplicate chunk transcode on crash, poison media exploit, orphaned blobs, CDN miss storm, manifest referencing missing segment, rights revocation lag.
 
-**Trade-offs:** direct object upload via scoped URLs; asynchronous idempotent DAG processing; immutable derivatives; metadata authority separate from blob storage; CDN and adaptive bitrate. Design deletion and policy propagation across every derivative and cache.
+**Trade-offs:** pre-signed resumable direct upload; idempotent chunked transcode DAG with deterministic keys; immutable segments/manifests; short-TTL signed CDN tokens. Propagate takedowns across metadata authority, manifests, and CDN purge.
 
 ---
 
 ## 15. File storage and synchronization
 
-**Critical questions:** file/folder semantics, block or whole-file upload, offline edits, conflict policy, sharing, versioning, deduplication, retention, and device count.
+**Critical questions:** file/folder semantics, chunked delta vs whole-file upload, offline edits, conflict policy, ACL sharing, version retention, dedup scope.
 
-> **Invariant:** metadata references durable content; access decisions and version lineage remain consistent across sync.
+> **Invariant:** namespace metadata authority commits a version only after all content-addressed chunks are durably verified; devices converge on identical version lineage.
 
-**Scale axes:** files, bytes, versions, chunks, devices, change events, sharing edges, and sync fan-out.
+**Scale axes:** files, chunk bytes, versions, devices/namespace, ACL edges, change-feed fan-out.
 
-**Failure prompts:** interrupted upload, metadata/blob divergence, conflicting offline edits, duplicate chunks, stale share permission, notification loss, mass-delete propagation, and ransomware-like updates.
+**Failure prompts:** crash between blob upload and metadata commit, orphan chunks, concurrent offline overwrite, cross-tenant hash-dedup side-channel leak, stale share ACL, ransomware mass-delete propagation.
 
-**Trade-offs:** content-addressed chunks versus simple objects; optimistic versioning; per-namespace change cursor; server conflict copies versus domain merge; direct blob transfer with metadata commit. Make large operations resumable and protect destructive propagation.
+**Trade-offs:** content-addressed chunking vs whole-object overwrite; CAS (`expected_version`) metadata commit forking conflict copies vs domain merge; per-namespace journal cursor (`revision_id`) for delta sync. Require proof-of-possession before cross-user dedup and keep soft-delete recovery windows.
 
 ---
 
 ## 16. Proximity search
 
-**Critical questions:** point versus area, radius, result count, freshness, update frequency, ranking, boundary correctness, and privacy.
+**Critical questions:** point vs area, radius, top-k ranking, update cadence, cell-boundary exactness, location privacy.
 
-> **Invariant:** returned entities satisfy authorization and documented distance/region semantics within a known freshness bound.
+> **Invariant:** queries return only authorized entities whose authoritative coordinates fall within the region and declared staleness bound.
 
-**Scale axes:** indexed entities, location updates, queries, radius, density skew, precision levels, and geographic distribution.
+**Scale axes:** entities, location writes/s, spatial queries/s, radius, urban density skew.
 
-**Failure prompts:** cell-boundary miss, dense-cell explosion, stale location, polar/dateline error, hot city, privacy leakage, and expensive exact-distance filtering.
+**Failure prompts:** cell-boundary miss, dense-cell scan explosion, stale coordinates, antimeridian/polar wrap error, unbounded exact-distance post-filter.
 
-**Trade-offs:** geohash/grid, quadtree, R-tree, or search index; coarse candidate cells followed by exact filtering; adaptive precision by density. Do not expose precision greater than the product requires.
+**Trade-offs:** Geohash/S2/H3 cells vs quadtree vs R-tree; covering-cell union plus exact distance filter; read replica index vs mutable grid. Cap candidates per cell and coarsen precision to product needs.
 
 ---
 
 ## 17. Nearby friends
 
-**Critical questions:** opt-in, visibility relationships, location precision/freshness, background update policy, notification cadence, block semantics, and battery/network limits.
+**Critical questions:** mutual opt-in authority, visibility graph, precision/freshness, background wakeup budget, revocation latency, battery/radio limits.
 
-> **Invariant:** only mutually authorized viewers can learn permitted proximity; revocation propagates within a defined bound.
+> **Invariant:** only mutually authorized peers learn permitted proximity within the revocation SLA; repeated queries cannot narrow location beyond the disclosure policy.
 
-**Scale axes:** active users, update frequency, friendship edges, nearby density, subscriptions, and fan-out.
+**Scale axes:** active users, update cadence, friend degree, cell density, subscriptions, fan-out.
 
-**Failure prompts:** stale authorization, rapid boundary churn, celebrity/high-degree user, location replay, region handoff, inference from update timing, and reconnect burst. An authorized viewer can combine repeated distance-band queries with their own changing position to infer finer location; removing coordinates alone does not bound disclosure.
+**Failure prompts:** stale auth/block cache leaking location after revocation, cell-boundary flapping, high-degree fan-out spike, location replay, region handoff, reconnect burst. A moving authorized viewer can triangulate finer coordinates by combining repeated distance-band queries from changing positions; stripping coordinates alone does not bound disclosure.
 
-**Trade-offs:** compare actual mechanisms. Pull reads authorized friends' latest state; work follows active queries and friend degree. Geocell pub/sub routes updates to active cell subscribers, then enforces relationship authorization; work follows updates and cell occupancy, with dense-cell hotspots. A hybrid sends bounded invalidations to active viewers and pulls current authorized state, trading extra coordination for fewer repeated reads. Choose from measured cadence, degree/density skew, freshness and revocation budgets; do not install all three.
+**Trade-offs:** compare mechanisms against measured cadence, degree/density skew, and revocation budgets (do not install all three):
+- **Pull:** queries authorized friends' latest state; scales with active polls and friend degree.
+- **Geocell pub/sub:** routes updates to cell subscribers then filters by friendship authority; scales with movement writes and cell occupancy.
+- **Hybrid:** sends bounded invalidations to active viewers who pull current state, trading session coordination for fewer polls.
 
-**Decision evidence:** explain these alternatives in the recommendation; naming an alternative only as a future trigger does not compare its cost or failure boundary. Explain how a moving authorized viewer could infer location through repeated queries. Select a permitted disclosure policy and enforcement mechanism, such as stable subject coarsening plus bounded refresh/query budgets; distance bands or rate limits alone do not prove privacy. Test probing from multiple positions against that policy and disclose residual inference rather than asserting that coordinates being absent prevents it.
+**Decision evidence:** compare mechanism cost and failure boundaries in the recommendation rather than deferring alternatives to future triggers. Explain moving-viewer inference via repeated distance-band queries. Select a disclosure policy and enforcement mechanism—such as stable subject coarsening plus bounded query/refresh budgets—because distance bands or rate limits alone fail under multi-position probing. Disclose residual inference.
 
-**Validation:** inject a crowded cell, many simultaneous reconnects, stale presence and revocation. State the bounded response: partition or suppress optional cell fan-out, jitter/rate-limit reconnects, reject expired locations and fail closed on authorization uncertainty. Measure client transmissions and radio wakes as well as server load; coalesce movement updates and bound foreground/background refresh. Repeat probing from multiple positions to test the allowed precision/freshness policy, not merely the absence of coordinate fields. Use short retention and explicit deletion, and treat cached or previously observed locations as a disclosure boundary rather than data that can be recalled.
+**Validation:** inject crowded cells, simultaneous reconnects, stale presence, and revocation. State bounded responses: partition/suppress optional cell fan-out, jitter/rate-limit reconnects, reject expired locations, and fail closed on auth uncertainty. Measure client radio wakes and server load; coalesce movements and cap refresh. Probe from multiple positions to test the coarsening/budget policy. Use short retention, explicit deletion, and treat previously observed locations as an irreversible disclosure boundary.
 
 ---
 
 ## 18. Map and navigation
 
-**Critical questions:** static browsing versus turn-by-turn navigation, offline use, map freshness, traffic freshness, route quality, ETA accuracy, and supported geography.
+**Critical questions:** static browsing vs turn-by-turn routing, offline packs, road-graph vs traffic freshness, ETA accuracy, dispatch matching.
 
-> **Invariant:** map/version dependencies used for a route are traceable; navigation updates do not silently mix incompatible graph data.
+> **Invariant:** route computation binds to a traceable road-graph version and traffic epoch without mixing incompatible segment IDs.
 
-**Scale axes:** map graph, tiles, location updates, route queries, traffic events, zoom levels, and geographic hot spots.
+**Scale axes:** graph nodes/edges, vector tiles, GPS stream, route/ETA QPS, traffic incidents, urban hotspots.
 
-**Failure prompts:** stale closure, tile miss storm, GPS noise, route service timeout, map-version skew, traffic-feed loss, and reroute oscillation.
+**Failure prompts:** unindexed closure routing into hazard, tile miss storm, GPS canyon noise snapping to wrong road, route timeout, client/server graph-version skew, reroute oscillation.
 
-**Trade-offs:** precomputed raster/vector tiles; hierarchical graph partitioning and precomputation; online traffic overlays; client caching/offline packages; approximate ETA models. Provide last-known/static fallbacks and expose freshness where it changes safety or trust.
+**Trade-offs:** precomputed vector tiles; hierarchical routing graphs (contraction hierarchies / cells) with dynamic traffic weights; offline regional bundles; HMM map-matching. Fall back to static weights on traffic loss and surface staleness on safety-critical routes.

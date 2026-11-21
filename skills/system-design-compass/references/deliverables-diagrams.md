@@ -1,92 +1,85 @@
 # Deliverables and diagrams
 
-> Use the smallest artifact that records the decision and enables its next audience. Preserve requested formats when the user provides one.
+> Choose the smallest artifact that records the decision and unblocks execution. Respect requested formats.
 
 ## Full architecture document or RFC
 
-Use for a system or change with several boundaries, interfaces, teams, or quality attributes.
+Use when a design spans multiple boundaries, teams, interfaces, or quality attributes.
 
-1. **Summary and decision:** business outcome, selected direction, and why now.
-2. **Context:** actors, current state, constraints, scope, and non-goals.
-3. **Facts, assumptions, and open questions:** confidence and validation owner for material unknowns.
-4. **Requirements:** prioritized journeys, invariants, SLI/SLO, recovery, security, and cost constraints.
-5. **Demand model:** auditable low/base/high calculations and architecture thresholds.
-6. **Proposed architecture:** boundaries, ownership, context/container view, and end-to-end read/write flows.
-7. **Contracts and data:** APIs/events, source of truth, schemas, consistency, idempotency, retention, and deletion.
-8. **Decisions and alternatives:** credible options, evaluation criteria, accepted downsides, and reconsideration triggers.
-9. **Production behavior:** overload, partial failure, recovery, observability, security/privacy/abuse, capacity, and cost.
-10. **Delivery:** implementation slices, compatibility, migration, rollout, rollback, and decommission.
-11. **Validation and risks:** tests, experiments, launch gates, residual risks, owners, and unresolved decisions.
+1. **Summary and decision:** business outcome, selected architecture, urgency.
+2. **Context:** actors, baseline, constraints, scope, non-goals.
+3. **Facts, assumptions, and unknowns:** evidence status and validation owner.
+4. **Requirements:** prioritized journeys, invariants, SLI/SLO, RTO/RPO, security, cost envelope.
+5. **Demand model:** auditable low/base/high math and architecture thresholds.
+6. **Proposed architecture:** boundaries, authoritative owners, container view, read/write paths.
+7. **Contracts and data:** APIs/events, schemas, consistency, idempotency, reconciliation, retention, deletion.
+8. **Alternatives:** credible options (including simple baseline), downsides, reconsideration triggers.
+9. **Production readiness:** overload, partial failure, recovery, observability, security/abuse, capacity, unit cost.
+10. **Delivery and migration:** slices, mixed-version compatibility, rollout phases, abort thresholds, rollback, decommission.
+11. **Validation and risks:** concrete fault schedules, pass/fail business oracles, launch gates, residual risks, owners.
 
-Tailor the sections. A section may be one sentence when the issue is immaterial; critical unknowns must remain visible.
+Collapse immaterial sections to one line; keep decision-changing unknowns explicit.
 
 ## Architecture Decision Record
 
-Use for one durable choice.
+Use for one durable choice (`narrow-adr`). Present the decision and its five operational guarantees at a glance:
 
 ```markdown
 # ADR-NNN: Decision title
 
 - Status: proposed | accepted | superseded | deprecated
-- Date: YYYY-MM-DD
-- Owners: roles or teams
+- Date: YYYY-MM-DD | Owners: roles or teams
 
-## Context
-Decision pressure, requirements, constraints, and evidence.
-
-## Decision drivers
-Prioritized criteria that distinguish the options.
+## Context and drivers
+Decision pressure, baseline constraint, and prioritized evaluation criteria.
 
 ## Considered options
-Credible alternatives, including retaining the current/simple approach when viable.
+1. Simple baseline / current architecture
+2. Chosen option (and credible contenders, with rejection evidence)
 
-## Decision
-Chosen option, scope, and key mechanics.
+## Decision and operational guarantees
+Chosen mechanism, enforcement boundary, and five guarantees at a glance:
+- **Latency and isolation:** sync/async boundary, tail-latency impact, and tenant or failure-domain isolation.
+- **Visible completion:** durable business state guaranteed on caller success versus async completion.
+- **Retry safety:** idempotency identity, deduplication scope, ambiguous-outcome resolution, and repair owner on exhaustion.
+- **Cost drivers:** dominant variable units (requests, compute, storage/replicas, queue ops, transfer/egress).
+- **Accepted downsides:** explicit trade-offs and operational load.
 
-## Consequences
-Benefits, accepted downsides, risks, operational effects, and migration impact.
-
-## Validation and reconsideration
-Evidence to collect and measurable triggers for revisiting the decision.
+## Validation and reconsideration triggers
+- **Verification:** concrete fault schedule and pass/fail business oracle.
+- **Reconsideration triggers (label unsupplied numbers as Proposed):** quantitative thresholds—QPS/write rate, oldest uncompleted backlog age, error/conflict ratio, or unit cost—that require revisiting this choice.
 ```
 
-Do not use an ADR to hide unresolved requirements. Link superseding decisions rather than rewriting history.
+Never hide unresolved correctness gaps in an ADR. Link superseding ADRs instead of rewriting history.
 
 ## Architecture review
 
-Lead with the verdict and review scope. List findings in priority order using: priority, evidence, trigger, impact, recommendation, and validation. End with strengths to preserve, blockers, follow-ups, and unknowns. Do not mix unproven hypotheses with demonstrated defects.
+Lead with verdict and scope. Order findings by severity: **priority, evidence, trigger, impact, recommendation, and pass/fail validation oracle**. Close with strengths to preserve, blockers, and open unknowns. Separate demonstrated defects from hypotheses.
 
 ## Migration plan
 
-Describe current and target states, throughout-migration invariants, compatibility model, and source-of-truth transitions. Use a phase table with change, preconditions, cohort, success metrics, observation window, abort threshold, rollback, owner, and exit evidence. Finish with reconciliation and decommission criteria.
+State source and target states, invariants held throughout cutover, mixed-version read/write compatibility, and source-of-truth handoff. Use a phase table: **slice, preconditions, cohort, success oracle, observation window, quantitative abort threshold (labeled if proposed), rollback, owner, and exit evidence**. Close with reconciliation and decommission gates.
 
 ## Implementation-ready plan
 
-Group work into dependency-aware vertical slices. Each item states intended outcome, affected interface/data boundary, prerequisites, verification, rollout, and rollback. Leave code-level choices open only when they do not affect a public contract, invariant, migration, or operational risk.
+Group work into dependency-ordered vertical slices stating outcome, contract/data boundary, prerequisites, fault/invariant verification, rollout, and rollback. Leave code choices open only when contracts, invariants, migration safety, and operations are unaffected.
 
 ## Diagrams
 
-Use diagrams only when relationships, hierarchy, placement, or sequence are harder to understand in prose.
+Add a diagram only when topology, trust boundaries, or sequence are clearer visually than in prose. Pick the smallest view following the [C4 model](https://c4model.com/diagrams) intent:
 
-Choose the smallest useful view:
-
-- **System context:** people and external systems around the system under design.
-- **Container:** independently deployable or managed runtime/data boundaries and their protocols.
-- **Dynamic/sequence:** ordering, retries, asynchronous transitions, or failure behavior for one journey.
-- **Deployment:** regions/zones, placement, network/trust boundaries, and failover when these affect a decision.
-
-System context and container views are sufficient for most architecture discussions. Add component or deployment detail only for the specific risk under review.
+- **System context:** actors and external systems.
+- **Container:** deployable runtimes, authoritative stores, queues, and protocols.
+- **Dynamic/sequence:** ordering, retries, lease handoff, or failure behavior for one journey.
+- **Deployment:** regions/zones, trust boundaries, and failover when placement affects the decision.
 
 ### Mermaid rules
 
-- Give every node a descriptive role, not only a product name.
-- Label important edges with protocol, direction, and sync/async semantics.
-- Show authoritative stores, queues, trust boundaries, and external actors distinctly.
-- Keep one diagram to one story. Split a crowded picture.
-- Explain the diagram in prose, including what it intentionally omits.
-- Avoid syntax that depends on experimental Mermaid features.
-
-Example container-level flow:
+- Label every node with its role, not only a product name.
+- Label edges with protocol, direction, and sync/async or conditional-write semantics.
+- Distinguish authoritative stores, queues, trust boundaries, and external providers.
+- Keep one story per diagram; state in prose what it omits.
+- Fall back to an ordered flow or compact ASCII if Mermaid is unsupported. **A diagram never substitutes for consistency, failure, or ownership semantics.**
 
 ```mermaid
 flowchart LR
@@ -96,7 +89,3 @@ flowchart LR
     Queue --> Worker[Idempotent worker]
     Worker -->|side effect| Provider[External provider]
 ```
-
-If the target cannot render Mermaid, provide an equivalent ordered flow or compact ASCII diagram. **A diagram never substitutes for consistency, failure, or ownership semantics.**
-
-This diagram guidance follows the notation-independent intent of the [C4 model](https://c4model.com/diagrams) without requiring a C4-specific tool.

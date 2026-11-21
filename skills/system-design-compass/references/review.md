@@ -1,74 +1,72 @@
 # Architecture review workflow
 
-> Use this mode to assess an existing repository, design document, deployed system, or proposed architecture. The objective is decision support, not a generic best-practices checklist.
+> Assess a repository, design document, deployed system, or proposal for decision support rather than a generic checklist.
 
-## Define the review
+## Rank evidence and separate unknowns from defects
 
-Establish the review question, business criticality, lifecycle stage, and evidence available. A pre-launch design review, incident-driven review, cost review, and modernization assessment require different depth.
+Define the review question, criticality, lifecycle stage, and evidence. Rank sources in order:
 
-Treat evidence in this order:
-
-1. Executable behavior, configuration, schema, infrastructure, and tests.
-2. Production telemetry, incident records, capacity data, and runbooks.
-3. Current architecture and decision documents.
+1. Executable code, configuration, schema, infrastructure, and tests.
+2. Production telemetry, incidents, capacity data, and runbooks.
+3. Architecture and decision documents.
 4. Stakeholder statements.
 5. Explicit reviewer assumptions.
 
-When sources conflict, report the conflict. Do not treat a stale diagram as implementation truth or missing documentation as proof that a control is absent.
+Report source conflicts directly. Separate demonstrated facts, conditional assumptions, and explicit unknowns. Never treat a stale diagram as implementation truth, and **never report missing evidence or absent documentation as a fabricated defect**—classify it as an explicit unknown or conditional assumption.
 
-## Trace the system before judging it
+## Trace critical paths and authoritative state owners
 
-Map the smallest set of flows needed to answer the review question:
+Map the minimum flows answering the review question:
 
-- An externally initiated request from entry point to response.
-- A state-changing operation through persistence and downstream effects.
-- An asynchronous job or event through acknowledgement, retry, and terminal failure.
-- Authentication to authorization at the protected resource.
-- Deployment and rollback through health evaluation.
+- External request from entry point to response.
+- State mutation through persistence, authoritative ownership, and downstream effects.
+- Asynchronous work through ack, retry, and terminal repair or dead-letter handling.
+- Authentication to resource-level authorization at the enforcement boundary.
+- Deployment, health gate, and rollback boundary.
 
-Identify trust boundaries, data ownership, synchronous dependency depth, queues, caches, consistency boundaries, shared failure domains, and operational owners. Confirm what is shared across tenants, regions, or critical workloads.
+Identify trust boundaries, **authoritative state owner** per entity, synchronous dependency depth, queues, caches, consistency boundaries, shared failure domains, and tenant/regional isolation.
 
-## Evaluate consequential risks
+## Evaluate consequential risks with violating event sequences
 
-Apply only relevant lenses:
+Apply only lenses matching criticality, stage, and constraints:
 
 | Lens | Risk to examine |
 |---|---|
-| **Correctness** | invariants, concurrency control, ordering, duplicate handling, reconciliation, and source of truth. |
-| **Reliability** | SLO feasibility, dependency budgets, overload behavior, isolation, redundancy, recovery, and operability. |
-| **Performance** | critical path, fan-out, contention, hot keys, amplification, payload size, and capacity headroom. |
-| **Security and privacy** | identity, authorization, secrets, trust boundaries, data classification, retention, abuse, and auditability. |
-| **Data** | ownership, schema evolution, consistency, retention/deletion, backup restoration, and migration safety. |
-| **Delivery** | coupling, compatibility, testability, observability, rollout, rollback, and blast radius. |
-| **Cost and sustainability** | dominant unit costs, idle baseline, growth multipliers, egress, retention, and waste. |
-| **Complexity** | components or abstractions whose operational cost is not justified by a requirement. |
+| **Correctness** | invariants, authoritative state owner, concurrency, ordering, idempotency, reconciliation. |
+| **Reliability** | SLO feasibility, dependency budgets, overload shedding, isolation, redundancy, recovery. |
+| **Performance** | critical-path latency, fan-out, contention, hot keys, retry amplification, payload size, headroom. |
+| **Security and privacy** | actor/resource authorization, secrets, trust boundaries, classification, retention, abuse, auditability. |
+| **Data** | ownership, schema evolution, consistency, retention/deletion, backup restore, migration safety. |
+| **Delivery** | coupling, mixed-version compatibility, testability, observability, rollout gates, rollback blast radius. |
+| **Cost and sustainability** | dominant unit costs, idle baseline, growth multipliers, egress, retention, waste. |
+| **Complexity** | components or abstractions not justified over a simpler baseline. |
 
-Do not demand maximum maturity in every dimension. Judge the design against its actual criticality, stage, and constraints.
+Before declaring a correctness or reliability defect, construct the **violating event sequence** (race, crash, timeout, stale owner, or partial write) breaking the invariant.
 
-## Write actionable findings
+## Pair each finding with the smallest surgical fix and a falsifiable experiment
 
-Every finding must contain:
+Every finding requires:
 
-| Finding field | Required content |
+| Field | Required content |
 |---|---|
-| **Title** | concrete failure or decision gap, not a category label. |
-| **Priority** | `P0` imminent catastrophic exposure, `P1` high-probability or high-impact blocker, `P2` material but schedulable risk, or `P3` improvement. |
-| **Evidence** | file/line, artifact section, metric, incident, or named assumption. |
-| **Trigger** | the condition under which the problem occurs. |
-| **Impact** | affected invariant, user journey, SLO, security property, cost, or recovery objective. |
-| **Recommendation** | the smallest change that removes or measures the risk. |
-| **Validation** | a test, query, load experiment, failure exercise, or rollout signal. |
+| **Title** | concrete failure mode or decision gap, not a category label. |
+| **Priority** | `P0` imminent catastrophic exposure, `P1` high-impact blocker, `P2` material schedulable risk, `P3` minor improvement. |
+| **Evidence** | file/line, artifact section, metric, incident, or labeled conditional assumption. |
+| **Trigger** | violating event sequence, fault, or load condition producing the failure. |
+| **Impact** | affected invariant, journey, SLO, security property, cost, or RTO/RPO. |
+| **Recommendation** | **the smallest surgical fix** removing or bounding the risk without unnecessary components. |
+| **Validation** | **a falsifiable experiment**—fault schedule, concurrency test, query, or load check with a pass/fail oracle. |
 
-Use calibrated language. Distinguish demonstrated defects from plausible risks and missing evidence. Consolidate findings with the same cause instead of inflating the count.
+Consolidate findings sharing a root cause. Distinguish demonstrated defects from conditional risks and open unknowns.
 
-## Finish with a verdict
+## Deliver a verdict that preserves sound decisions
 
 Summarize:
 
-- The architecture's current fitness for the stated goal.
-- The strongest existing decisions worth preserving.
-- Blocking risks and the minimum pre-launch or pre-migration actions.
+- Current fitness for the stated goal, load, and constraints.
+- **Sound existing decisions and simple boundaries to preserve**, protecting working components from churn.
+- Blocking (`P0`/`P1`) risks and minimum surgical pre-launch or pre-migration fixes.
 - Non-blocking follow-ups ordered by risk reduction per unit effort.
-- Unknowns that require telemetry, stakeholder input, or experiments.
+- Explicit unknowns and conditional assumptions requiring telemetry, stakeholder input, or falsifiable experiments.
 
-When no actionable finding exists, say so and describe the evidence reviewed. Do not manufacture recommendations to make the review appear thorough.
+When no actionable defect exists, state the design is sound and cite reviewed evidence. Never manufacture findings.

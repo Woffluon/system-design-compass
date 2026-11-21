@@ -4,72 +4,79 @@
 
 ## Partitioning and placement
 
-Partition to distribute a proven load or failure-isolation need. Define the partition key, routing owner, replication unit, rebalancing process, and maximum practical partition size.
+Partition to address a proven load or fault-isolation limit. Define partition key, routing owner, replication unit, rebalancing procedure, and maximum partition size.
 
-- **Hash partitioning:** distributes random keys well but weakens range scans and can still suffer hot keys.
-- **Range partitioning:** supports ordered scans but concentrates sequential or skewed traffic unless ranges split and move.
-- **Directory-based routing:** supports custom placement and moves but introduces metadata consistency and availability requirements.
-- **Consistent/rendezvous hashing:** reduces movement as membership changes; virtual nodes or weights address heterogeneous capacity, not single-key hotspots.
+- **Hash partitioning:** spreads random keys evenly, weakens range scans, and remains exposed to single-key hotspots.
+- **Range partitioning:** serves ordered scans, concentrating sequential writes unless ranges split and move.
+- **Directory routing:** enables custom placement at the cost of metadata consistency and availability.
+- **Consistent/rendezvous hashing:** reduces movement on membership change; virtual nodes handle heterogeneous node capacity, not hot keys.
 
-Analyze skew by tenant, celebrity entity, time bucket, geography, and workload type. Mitigations include key salting with read aggregation, tenant isolation, hierarchical aggregation, request coalescing, dedicated partitions, and admission control.
+Check skew by tenant, celebrity entity, time bucket, geography, and workload class. Mitigate with key salting plus read aggregation, tenant isolation, hierarchical aggregation, request coalescing, dedicated partitions, and admission control.
 
 ## Replication and consistency
 
-State the replication purpose: availability, durability, read locality, disaster recovery, analytics, or migration. Identify synchronous acknowledgement scope, leader or quorum behavior, lag visibility, failover authority, split-brain prevention, and repair.
+State replication purpose: availability, durability, read locality, disaster recovery, analytics, or migration. Define synchronous acknowledgement scope, leader/quorum rules, lag visibility, failover authority, split-brain prevention, and divergence repair.
 
-**Quorum counts alone do not guarantee desired semantics;** topology, versioning, read repair, failure detection, and membership changes matter. For multi-region designs, make the latency/consistency trade-off per operation. Keep irreversible or financially material writes on a clearly owned serialization path unless the business explicitly accepts conflict resolution.
+**Quorum counts alone do not guarantee linearizability or durability;** topology, versioning, read repair, failure detection, and membership changes govern outcomes. For multi-region writes, state the per-operation latency/consistency trade-off and keep irreversible or financial writes on a single serialization path unless conflict resolution is explicitly acceptable.
 
 ## Caching
 
-Use a cache only with a defined source of truth, key, value size, expected reuse, freshness tolerance, miss behavior, invalidation owner, and failure policy.
+Add a cache only with a named source of truth, key schema, value size, reuse ratio, freshness bound, miss path, invalidation owner, and failure policy.
 
-- Cache-aside is simple but permits stale reads and miss storms.
-- Read-through/write-through centralize policy but add dependency coupling.
-- Write-behind improves write latency but risks loss and reordering.
-- Local caches reduce latency but multiply invalidation and memory use.
+- **Cache-aside:** simple, permits stale reads and miss storms.
+- **Read/write-through:** centralizes policy while coupling write availability to the cache.
+- **Write-behind:** lowers write latency at the risk of loss and reordering.
+- **Local cache:** cuts network latency while multiplying memory and invalidation skew.
 
-Protect cold or hot keys with request coalescing, bounded concurrency, jittered expiry, prewarming only when justified, and stale-while-revalidate where stale data is safe. Never let cache failure produce an unbounded surge into the system of record.
+Protect hot or cold keys with request coalescing, bounded concurrency, jittered TTLs, justified prewarming, and stale-while-revalidate where staleness is safe. Prevent cache failures from sending an unbounded surge to the system of record.
 
 ## Messaging and stream processing
 
-Define the producer acknowledgement point, durability, partitioning, ordering scope, consumer group behavior, retry policy, backpressure, and retention/replay needs.
+Specify producer acknowledgement point, durability, partitioning, ordering scope, consumer group semantics, retry budget, backpressure, and retention/replay rules. Make at-least-once consumers idempotent or deduplicated within the state-mutation transaction. Pair state writes with a transactional outbox or log-based change capture, and retain inbox deduplication keys beyond maximum replay age.
 
-At-least-once delivery is common: make consumer effects idempotent or deduplicated at the same durable boundary as the effect. Use an outbox or log-coupled change capture when state mutation and event publication must not diverge. An inbox/deduplication record needs a scope and retention horizon.
+For windowed stream aggregation, define event time versus processing time, allowed lateness, watermarks, retractions, and deterministic replay. Use [decision validation](decision-validation.md) to turn delivery and queue claims into fault schedules and pass/fail oracles.
 
-Retries require a budget. Use exponential delay and jitter for transient failure, cap attempts or elapsed time, and route terminal failures to a visible repair workflow. **A dead-letter queue without ownership, alerts, replay safety, and retention is only hidden backlog.**
+### Worker crashes, lease expiry overlap, and retry amplification
 
-Monitor queue age and oldest-item latency, not only depth. Bound producer admission or shed optional work when consumption cannot catch up.
+Queue consumers and outbound webhook workers face three compounding faults:
 
-When recovery or validation remains unspecified, use [decision validation](decision-validation.md) to turn delivery and queue claims into fault experiments and operator actions.
+1. **Worker crash after remote effect before ack/record:** a worker invokes an external HTTP webhook or payment API, the remote side commits, and the worker crashes before recording local completion or acknowledging the broker message. Redelivery repeats the call unless durable pre-call intent and provider/idempotency identity are recorded first.
+2. **Lease expiry and worker overlap with fencing tokens:** a stalled worker (GC pause, network hang, slow downstream) outlives its broker visibility timeout or lease expiry while still running. The broker hands the job to a second worker, creating concurrent overlapping execution. Require a monotonically increasing **fencing token** (or version check) enforced at the authoritative store/effect boundary so a stale lease owner cannot overwrite newer state or emit duplicate webhooks.
+3. **Retry amplification:** when downstream latency approaches the call timeout or lease duration, leases expire mid-flight while callers and consumers retry concurrently. Overlapping workers plus multi-layer retries multiply in-flight load (`retry amplification`), saturating worker pools even at flat arrival rates. Enforce `lease_duration > call_timeout + local_record_margin`, assign one retry owner per boundary, use jittered exponential backoff, and cap retry concurrency.
 
-For windowed aggregation define event time versus processing time, allowed lateness, watermark policy, corrections/retractions, and replay determinism. Reconciliation is part of correctness when late or duplicated events are possible.
+### Backlog drain capacity and age-triggered intervention
+
+**Storage capacity is not recovery capacity:** deep queue retention buffers messages without draining them. Backlog recovery requires degraded completion throughput to exceed normal arrivals plus retries:
+
+```text
+completion_rate > arrival_rate + retry_rate
+net_drain_rate = completion_rate - (arrival_rate + retry_rate)
+```
+
+When retries or worker losses push `completion_rate <= arrival_rate + retry_rate`, backlog grows unboundedly regardless of disk space.
+
+Monitor **backlog age** (oldest-item latency) alongside depth. Define an age threshold, an authoritative **intervention owner**, and the concrete **intervention action** when backlog age rises: throttle non-critical producers, shed optional load, clamp retries, isolate slow or poison tenants/endpoints into separate queues, or scale verified bottleneck capacity. **A dead-letter queue without an owner, alerts, replay safety, and retention is hidden backlog.**
 
 ## Coordination, time, and identity
 
-Minimize coordination on hot paths. When leader election, leases, locks, or consensus are necessary, define the protected invariant and use fencing/version tokens so an expired owner cannot act after a pause.
+Keep coordination off hot paths. When leader election, leases, locks, or consensus are required, name the protected invariant and validate fencing tokens at the storage boundary so a paused owner cannot act after lease expiry.
 
-Wall clocks can move and machines disagree. Use monotonic time for elapsed durations. If IDs or ordering depend on clocks, define rollback handling and whether generated values expose time, topology, or traffic.
-
-Global order is expensive and often unnecessary. Prefer ordering within the smallest business scope that preserves correctness.
+Wall clocks drift and jump backward; measure elapsed time with monotonic clocks. When IDs or ordering depend on wall clocks, define rollback handling and whether values leak timestamp, topology, or volume. Prefer entity- or partition-scoped order over global order.
 
 ## Overload and partial failure
 
-Distributed calls can complete after a caller times out. Design operations so retries are safe and ambiguous outcomes can be queried or reconciled.
+Remote calls can succeed after a caller timeout; reconcile ambiguous outcomes before re-running side effects. Enforce:
 
-Apply:
-
-- Deadlines propagated through the call chain.
-- Per-dependency timeout and retry budgets.
+- End-to-end deadline propagation.
+- Per-dependency timeout and retry budgets with a single retry owner per boundary.
 - Bounded queues, worker pools, and connection pools.
-- Circuit breaking for persistently unhealthy dependencies.
-- Admission control, fair quotas, and load shedding before saturation.
-- Bulkheads by tenant, priority, dependency, or workload class.
-- Degraded responses that preserve critical invariants.
-
-Avoid retry multiplication across layers. Choose one retry owner for each failure boundary and ensure the expected extra load fits capacity during incidents.
+- Circuit breaking for unhealthy dependencies.
+- Admission control, tenant quotas, and load shedding before saturation.
+- Bulkheads across tenants, priorities, dependencies, and workload classes.
+- Degraded responses preserving core correctness invariants.
 
 ## Rebalancing and recovery
 
-Treat membership change, failover, replica catch-up, compaction, backup, and rebalancing as workloads with resource budgets. Throttle background repair before it harms foreground SLOs, but retain a bound on how long redundancy may remain reduced.
+Budget membership changes, failover, replica catch-up, compaction, backup, and rebalancing as active workloads. Throttle background repair before it breaches foreground SLOs while bounding degraded-redundancy duration.
 
-Test the actual restoration path, including credentials, metadata, schema, indexes, and downstream reconciliation. Replication can copy corruption; it is not a substitute for versioned backups and recovery exercises.
+Exercise full restoration—credentials, metadata, schema, indexes, and downstream reconciliation—because replication copies corruption and never replaces versioned backups.
