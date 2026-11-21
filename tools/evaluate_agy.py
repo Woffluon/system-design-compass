@@ -10,14 +10,20 @@ import argparse
 import concurrent.futures
 import hashlib
 import json
-import re
+import os
 import shutil
 import subprocess
 import tempfile
 import threading
 from pathlib import Path
 
-import evaluate_skill as e
+if __package__:
+    from . import evaluate_skill as e
+else:
+    import evaluate_skill as e
+
+# Extra grace period beyond --timeout to let Antigravity CLI flush output and shut down cleanly.
+PROCESS_CLEANUP_GRACE_SECONDS = 30
 
 AGENT = """---
 name: sdc-subject
@@ -39,7 +45,7 @@ client; a URL alone is not verification. Answer the supplied task concretely.
 """
 
 GRADER = """---
-name: sdc-subject
+name: sdc-grader
 description: Grade only the inline blinded evaluation data.
 mainAgent: true
 subagent: false
@@ -81,10 +87,45 @@ def normalized_events(events: list[dict]) -> list[dict]:
     return result
 
 
+def cli_command() -> list[str]:
+    override = os.environ.get("AGY_CLI_BIN")
+    if override:
+        override_path = Path(override)
+        cli = str(override_path) if override_path.is_file() else shutil.which(override)
+        if not cli:
+            raise ValueError(f"AGY_CLI_BIN does not exist or is not on PATH: {override}")
+    else:
+        cli = shutil.which("agy")
+        if not cli:
+            raise ValueError(
+                "Antigravity CLI ('agy') is not installed or not on PATH (set AGY_CLI_BIN or add agy to PATH)"
+            )
+    suffix = Path(cli).suffix.lower()
+    if suffix == ".ps1":
+        shell = shutil.which("pwsh") or shutil.which("powershell")
+        if not shell:
+            raise ValueError(
+                f"Cannot execute Antigravity CLI script {cli} without pwsh/powershell on PATH"
+            )
+        return [shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", cli]
+    if suffix in {".cmd", ".bat"}:
+        comspec = os.environ.get("COMSPEC") or shutil.which("cmd")
+        if not comspec:
+            raise ValueError(
+                f"Cannot execute Antigravity CLI wrapper {cli} without cmd.exe on PATH"
+            )
+        return [comspec, "/c", cli]
+    return [cli]
+
+
 def provider_error(stderr: str) -> dict | None:
     for line in stderr.splitlines():
         if line.startswith("AGY_ERROR: "):
-            return json.loads(line.removeprefix("AGY_ERROR: "))
+            raw = line.removeprefix("AGY_ERROR: ")
+            try:
+                return json.loads(raw)
+            except json.JSONDecodeError:
+                return {"raw": raw}
     return None
 
 
@@ -95,26 +136,50 @@ def run_suite(args) -> None:
         raise ValueError("unknown case")
     if args.condition != "none" and not args.skill:
         raise ValueError("a frozen skill is required")
-    cli = shutil.which("agy")
-    if not cli:
-        raise ValueError("Antigravity CLI is not installed")
+    effort = getattr(args, "effort", "medium")
+    command_base = cli_command()
     args.output.mkdir(parents=True, exist_ok=True)
     source = e.digest(args.skill) if args.condition != "none" else None
     jobs = []
-    with (args.output / "run.lock").open("x"):
-        pass
+    lock = args.output / "run.lock"
+    try:
+        with lock.open("x", encoding="utf-8") as handle:
+            handle.write(f"pid={os.getpid()}\n")
+    except FileExistsError as exc:
+        raise ValueError(
+            f"active or stale lock at {lock}; verify no evaluation run is active before removing it"
+        ) from exc
     try:
         for model in args.models:
             for case in cases:
+                case_digest = hashlib.sha256(json.dumps(case, sort_keys=True).encode()).hexdigest()
                 identifier = f"{suite['name']}.{case['id']}.{model}.{args.condition}.{args.repeat}"
                 path = args.output / (identifier + ".json")
                 if path.exists():
-                    raise ValueError("immutable trial already exists; use a new repeat")
+                    existing = e.read_json(path)
+                    if (
+                        existing.get("status") == "completed"
+                        and existing.get("skill_digest") == source
+                        and existing.get("reasoning_effort", "medium") == effort
+                        and existing.get("case_digest") == case_digest
+                    ):
+                        continue
+                    raise ValueError(
+                        f"immutable trial already exists ({existing.get('status')}): {path.name}; use a new repeat"
+                    )
                 jobs.append((model, case, identifier, path))
         if len(list(args.output.glob("*.json"))) + len(jobs) > args.limit:
             raise ValueError("trial cap exceeded")
         for _, _, identifier, path in jobs:
-            e.write_json(path, {"run_id": identifier, "status": "reserved", "skill_digest": source})
+            e.write_json(
+                path,
+                {
+                    "run_id": identifier,
+                    "status": "reserved",
+                    "skill_digest": source,
+                    "reasoning_effort": effort,
+                },
+            )
         exhausted = threading.Event()
 
         def run(job):
@@ -123,37 +188,50 @@ def run_suite(args) -> None:
                 e.write_json(target, {"run_id": identifier, "status": "not-started-quota-exhausted",
                                      "skill_digest": source, "launched": False})
                 return
-            with tempfile.TemporaryDirectory(prefix="compass-agy-") as folder:
-                workspace = Path(folder)
-                agent = workspace / ".agents/agents/sdc-subject.md"
-                agent.parent.mkdir(parents=True)
-                agent_text = GRADER if case.get("grading") else AGENT
-                agent.write_text(agent_text, encoding="utf-8")
-                for name, content in case.get("files", {}).items():
-                    path = e.safe_path(workspace, name)
-                    path.parent.mkdir(parents=True, exist_ok=True)
-                    path.write_text(content, encoding="utf-8")
-                if source:
-                    shutil.copytree(args.skill, workspace / "skill")
-                prompt = e.make_prompt(case, args.condition, True)
-                before = e.digest(workspace)
-                command = [cli, "--new-project", "--agent", "sdc-subject", "--model", model,
-                           "--effort", "medium", "--disable-slash-commands",
-                           "--dangerously-skip-permissions", "--input-format", "stream-json",
-                           "--output-format", "stream-json", "--print-timeout", f"{args.timeout}s"]
-                record = {"run_id": identifier, "suite": suite["name"], "case": case["id"],
-                          "model": model, "condition": args.condition, "repeat": args.repeat,
-                          "role": "grader" if case.get("grading") else "subject",
-                          "launched": True,
-                          "reasoning_effort": "medium", "skill_digest": source,
-                          "case_digest": hashlib.sha256(json.dumps(case, sort_keys=True).encode()).hexdigest(),
-                          "prompt": prompt, "protocol": "agy-fresh-workspace-v1",
-                          "fixtures_inline": True, "agent_digest": hashlib.sha256(agent_text.encode()).hexdigest(),
-                          "harness": "Antigravity CLI; fresh conversation; restricted agent; cumulative global rules/catalog remain"}
-                try:
-                    completed = subprocess.run(command, cwd=workspace, input=json.dumps({
-                        "event": "user", "message": {"content": prompt}}) + "\n",
-                        capture_output=True, text=True, encoding="utf-8", timeout=args.timeout + 30)
+            record = {
+                "run_id": identifier, "suite": suite["name"], "case": case["id"],
+                "model": model, "condition": args.condition, "repeat": args.repeat,
+                "role": "grader" if case.get("grading") else "subject",
+                "launched": True,
+                "reasoning_effort": effort, "skill_digest": source,
+                "case_digest": hashlib.sha256(json.dumps(case, sort_keys=True).encode()).hexdigest(),
+                "protocol": "agy-fresh-workspace-v1",
+                "fixtures_inline": True,
+                "harness": "Antigravity CLI; fresh conversation; restricted agent; cumulative global rules/catalog remain",
+            }
+            try:
+                with tempfile.TemporaryDirectory(prefix="compass-agy-") as folder:
+                    workspace = Path(folder)
+                    agent_name = "sdc-grader" if case.get("grading") else "sdc-subject"
+                    agent = workspace / ".agents" / "agents" / f"{agent_name}.md"
+                    agent.parent.mkdir(parents=True)
+                    agent_text = GRADER if case.get("grading") else AGENT
+                    agent.write_text(agent_text, encoding="utf-8")
+                    for name, content in case.get("files", {}).items():
+                        path = e.safe_path(workspace, name)
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_text(content, encoding="utf-8")
+                    if source:
+                        shutil.copytree(args.skill, workspace / "skill")
+                    prompt = e.make_prompt(case, args.condition, True)
+                    before = e.digest(workspace)
+                    command = command_base + [
+                        "--new-project", "--agent", agent_name, "--model", model,
+                        "--effort", effort, "--disable-slash-commands",
+                        "--dangerously-skip-permissions", "--input-format", "stream-json",
+                        "--output-format", "stream-json", "--print-timeout", f"{args.timeout}s",
+                    ]
+                    record["prompt"] = prompt
+                    record["agent_digest"] = hashlib.sha256(agent_text.encode()).hexdigest()
+                    completed = subprocess.run(
+                        command,
+                        cwd=workspace,
+                        input=json.dumps({"event": "user", "message": {"content": prompt}}) + "\n",
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                        timeout=args.timeout + PROCESS_CLEANUP_GRACE_SECONDS,
+                    )
                     target.with_suffix(".native.jsonl").write_text(completed.stdout, encoding="utf-8")
                     target.with_suffix(".stderr.txt").write_text(completed.stderr, encoding="utf-8")
                     native = e.parse_events(completed.stdout)
@@ -176,29 +254,28 @@ def run_suite(args) -> None:
                         record["status"] = "unverified-model"
                     if case.get("grading") and record["command_count"]:
                         record["status"] = "unverified-grader-isolation"
-                    for event in events:
-                        command_text = event.get("item", {}).get("command", "")
-                        if re.search(r"[.]gemini[/\\]|[.]agents[/\\]skills|[.]codex[/\\]", command_text):
-                            record["other_skill_commands"].append(command_text)
                     if record["other_skill_commands"] or (args.condition == "none" and record["observed_skill_reads"]):
                         record["status"] = "contaminated"
                     if record["status"] == "completed" and source and "SKILL.md" not in record["observed_skill_reads"]:
                         record["status"] = "unverified-skill-load"
                     if e.digest(workspace) != before:
                         record["status"] = "workspace-mutated"
-                except subprocess.TimeoutExpired as error:
-                    record["status"] = "timeout"
-                    target.with_suffix(".native.jsonl").write_bytes(error.stdout or b"")
-                    target.with_suffix(".stderr.txt").write_bytes(error.stderr or b"")
-                e.write_json(target, record)
-                print(f"{identifier}: {record['status']}", flush=True)
+            except subprocess.TimeoutExpired as error:
+                record["status"] = "timeout"
+                target.with_suffix(".native.jsonl").write_bytes(error.stdout or b"")
+                target.with_suffix(".stderr.txt").write_bytes(error.stderr or b"")
+            except Exception as exc:
+                record["status"] = "failed"
+                record["error"] = f"{type(exc).__name__}: {exc}"
+            e.write_json(target, record)
+            print(f"{identifier}: {record['status']}", flush=True)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
             list(pool.map(run, jobs))
         if exhausted.is_set():
             raise RuntimeError("Provider quota exhausted; queued trials stopped. Inspect retained records before resuming.")
     finally:
-        (args.output / "run.lock").unlink()
+        lock.unlink()
 
 
 def main() -> None:
@@ -209,10 +286,11 @@ def main() -> None:
     parser.add_argument("--skill", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--cases", nargs="+")
+    parser.add_argument("--effort", choices=["low", "medium", "high"], default="medium")
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--workers", type=int, choices=[1, 2, 3, 4], default=2)
     parser.add_argument("--timeout", type=int, default=600)
-    parser.add_argument("--limit", type=int, default=94)
+    parser.add_argument("--limit", type=int, default=e.MAX_RUNS)
     run_suite(parser.parse_args())
 
 
