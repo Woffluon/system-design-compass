@@ -1,0 +1,127 @@
+{
+  "name": "trigger-eval",
+  "skill": "system-design-compass",
+  "purpose": "Evaluate automatic skill activation on positive architectural prompts and keyword-sharing near-miss negative prompts.",
+  "cases": [
+    {
+      "id": "pos-rfc-adr",
+      "should_trigger": true,
+      "category": "rfc-adr",
+      "target_mode": "narrow-adr",
+      "shared_keywords": ["ADR", "decision record", "architecture", "trade-offs"],
+      "prompt": "Write a concise Architecture Decision Record (ADR) choosing between synchronous thumbnail generation inside the 300ms upload API vs. offloading it to our existing worker queue with a 30s freshness SLA, including cost drivers and reconsideration triggers."
+    },
+    {
+      "id": "pos-async-queue-vs-sync",
+      "should_trigger": true,
+      "category": "async-queue-vs-sync",
+      "target_mode": "design",
+      "shared_keywords": ["async queue", "sync", "throughput", "retries"],
+      "prompt": "Should our order confirmation service dispatch customer notifications via an async queue or a synchronous HTTP call when peak traffic jumps 10x? Compare both options against worker outage recovery and retry amplification."
+    },
+    {
+      "id": "pos-webhook-payment-idempotency",
+      "should_trigger": true,
+      "category": "webhook-payment-idempotency",
+      "target_mode": "review",
+      "shared_keywords": ["webhook", "payment", "idempotency", "retry"],
+      "prompt": "Our checkout service calls Stripe synchronously inside the order DB transaction and retries 3x on timeout. Inspect orders/service.py and payments/client.py to prevent duplicate charges and design the minimal outbox and reconciliation boundary."
+    },
+    {
+      "id": "pos-zero-downtime-cutover-rollback",
+      "should_trigger": true,
+      "category": "zero-downtime-cutover-rollback",
+      "target_mode": "evolve",
+      "shared_keywords": ["migration", "cutover", "rollback", "schema"],
+      "prompt": "We have 90-day active v1 mobile clients that only understand pending and completed statuses while v2 needs split shipments. Plan a zero-downtime expand-migrate-contract rollout with a cutover barrier and a safe rollback boundary."
+    },
+    {
+      "id": "pos-tail-latency-capacity-review",
+      "should_trigger": true,
+      "category": "tail-latency-capacity-review",
+      "target_mode": "review",
+      "shared_keywords": ["tail-latency", "capacity", "review", "timeout"],
+      "prompt": "Review our six-dependency sequential checkout path and job queue capacity math for tail-latency spikes: each worker finishes 40 jobs/s with a 0.2 transient failure rate, one worker is down during a 300/s burst, and operators want to just enlarge queue storage."
+    },
+    {
+      "id": "pos-greenfield-design",
+      "should_trigger": true,
+      "category": "greenfield-design",
+      "target_mode": "design",
+      "shared_keywords": ["design", "system", "scale", "multi-tenant"],
+      "prompt": "Design a greenfield multi-tenant webhook delivery platform from scratch. We have no repo yet; clarify or bound the delivery guarantees, tenant fairness, capacity estimates, and abuse controls."
+    },
+    {
+      "id": "pos-vendor-limit-verification",
+      "should_trigger": true,
+      "category": "vendor-limit-verification",
+      "target_mode": "design",
+      "shared_keywords": ["compare", "retention", "limits", "official docs"],
+      "prompt": "Compare AWS SQS FIFO vs. Azure Service Bus Sessions for strict per-order ordering and 4-day outage replay. Verify current retention, throughput, and message-size limits from official vendor documentation before recommending one."
+    },
+    {
+      "id": "pos-system-design-interview",
+      "should_trigger": true,
+      "category": "system-design-interview",
+      "target_mode": "interview",
+      "shared_keywords": ["system design", "interview", "capacity", "scale"],
+      "prompt": "Run a 45-minute mock system design interview for a multi-region nearby-friends location service at 5M DAU. Push back on my capacity estimates and privacy boundaries, then grade my reasoning at the end."
+    },
+    {
+      "id": "neg-ui-design-system-tokens",
+      "should_trigger": false,
+      "category": "ui-design-system-tokens",
+      "shared_keywords": ["design", "system", "migrating", "review"],
+      "prompt": "We are migrating our UI design system from Tailwind v3 CSS variables to v4 @theme tokens. Review components/Button.tsx and styles/tokens.css, update the token mapping, and verify responsive spacing across breakpoints."
+    },
+    {
+      "id": "neg-ci-pipeline-migration",
+      "should_trigger": false,
+      "category": "ci-pipeline-migration",
+      "shared_keywords": ["migrate", "migration", "review"],
+      "prompt": "Migrate our CI pipeline in .github/workflows/*.yml from actions/checkout@v3 and Ubuntu 20.04 runners to v4 and Ubuntu 24.04, and review any deprecated Node 16 flags in the workflow scripts."
+    },
+    {
+      "id": "neg-behavioral-interview",
+      "should_trigger": false,
+      "category": "behavioral-interview",
+      "shared_keywords": ["interview", "production", "review"],
+      "prompt": "I have a senior engineer behavioral interview tomorrow. Review my STAR stories about a production outage I coordinated last year and help me tighten the 2-minute spoken summary."
+    },
+    {
+      "id": "neg-approved-adr-routine-endpoint",
+      "should_trigger": false,
+      "category": "approved-adr-routine-endpoint",
+      "shared_keywords": ["ADR", "architecture", "endpoint"],
+      "prompt": "Following our already-approved ADR-014 in docs/adr/014.md, implement the GET /v1/invoices pagination endpoint in routes/invoices.py and add unit tests matching our existing repository pattern."
+    },
+    {
+      "id": "neg-single-sql-index-tuning",
+      "should_trigger": false,
+      "category": "single-sql-index-tuning",
+      "shared_keywords": ["review", "architecture", "query"],
+      "prompt": "Review this single PostgreSQL reporting query in reports/daily_totals.sql that scans 2M rows and suggest a composite CREATE INDEX with EXPLAIN ANALYZE without changing table ownership or service architecture."
+    },
+    {
+      "id": "neg-single-file-bug-fix",
+      "should_trigger": false,
+      "category": "single-file-bug-fix",
+      "shared_keywords": ["fix", "service", "unit test"],
+      "prompt": "Fix the off-by-one UTC date parsing bug in utils/date_format.py where leap-day timestamps raise ValueError, and run the existing unit test file to confirm it passes."
+    },
+    {
+      "id": "neg-css-button-alignment",
+      "should_trigger": false,
+      "category": "css-button-alignment",
+      "shared_keywords": ["component", "fix", "mobile"],
+      "prompt": "The primary checkout submit button in components/CheckoutButton.css wraps awkwardly next to the spinner icon on 375px mobile screens. Fix the flexbox alignment and padding."
+    },
+    {
+      "id": "neg-dependency-version-bump",
+      "should_trigger": false,
+      "category": "dependency-version-bump",
+      "shared_keywords": ["version", "upgrade", "config"],
+      "prompt": "Bump eslint and @typescript-eslint/parser to the latest minor versions in package.json and update deprecated rule names in eslint.config.mjs so npm run lint passes."
+    }
+  ]
+}
