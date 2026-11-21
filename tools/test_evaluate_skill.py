@@ -107,6 +107,10 @@ class EvaluationTests(unittest.TestCase):
         self.assertIn("references/evolve.md", result["observed_skill_reads"])
         self.assertEqual(len(result["other_skill_commands"]), 1)
 
+    def test_harness_agent_is_not_treated_as_external_skill_contamination(self):
+        result = evaluation.metrics([{"type": "item.completed", "item": {"type": "command_execution", "command": r"Get-Content .agents\agents\sdc-subject.md", "exit_code": 0, "aggregated_output": "Instructions"}}])
+        self.assertEqual(result["other_skill_commands"], [])
+
     def test_an_existing_record_with_a_changed_protocol_cannot_be_silently_reused(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

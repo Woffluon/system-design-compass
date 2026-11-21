@@ -23,7 +23,7 @@ DEFAULT_BLIND_SEED = 20260930
 PROTOCOL = "isolated-catalog-v3"
 READ_PATH = re.compile(r"references[/\\][\w.-]+\.md|\bSKILL\.md\b")
 # Shared external-skill contamination pattern across Codex, Agents, and Gemini catalogs.
-OTHER_SKILL_PATTERN = re.compile(r"[.](?:codex|agents)/(?:skills|plugins|agents)|[.]gemini/")
+OTHER_SKILL_PATTERN = re.compile(r"[.](?:codex|agents)/(?:skills|plugins)|[.]gemini/")
 LISTING_COMMAND_PATTERN = re.compile(
     r"rg\s+--files|Get-ChildItem|\bls\b|\bdir\b|\bfind\b|\bTest-Path\b|\bstat\b|\bwc\b",
     re.I,
