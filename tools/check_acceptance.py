@@ -3,17 +3,31 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Collection
 from pathlib import Path
 
-from evaluate_skill import read_json
+if __package__:
+    from .evaluate_skill import read_json
+else:
+    from evaluate_skill import read_json
+
+DEFAULT_EXCLUDED_HARD = frozenset({"narrow-adr", "sound-system"})
+DEFAULT_NARROW_CASE = "narrow-adr"
 
 
-def check(baseline: list[dict], candidate: list[dict], models: list[str], suites: list[dict]) -> list[str]:
+def check(
+    baseline: list[dict],
+    candidate: list[dict],
+    models: list[str],
+    suites: list[dict],
+    excluded_hard: Collection[str] = DEFAULT_EXCLUDED_HARD,
+    narrow_case: str = DEFAULT_NARROW_CASE,
+) -> list[str]:
     errors = []
     expected = {}
     for suite in suites:
         expected.setdefault(suite["name"], set()).update(case["id"] for case in suite["cases"])
-    hard = expected["benchmark"] - {"narrow-adr", "sound-system"}
+    hard = expected["benchmark"] - set(excluded_hard)
     for model in models:
         original = {r["case"]: r for r in baseline if r["model"] == model and r["condition"] == "current"}
         for condition in ("none", "current"):
@@ -36,10 +50,10 @@ def check(baseline: list[dict], candidate: list[dict], models: list[str], suites
                     and all(r["grade"]["case_pass"] for r in confirmations)):
                 wins.append(case)
         if not wins:
-            errors.append(f"{model}: no hard-case correction with two clean confirmations")
-        narrow = [r for r in values if r["suite"] == "benchmark" and r["case"] == "narrow-adr"]
-        if (len(narrow) != 1 or "narrow-adr" not in original
-                or narrow[0]["observed_skill_read_output_words"] >= original["narrow-adr"]["observed_skill_read_output_words"]):
+            errors.append(f"{model}: no hard-case correction confirmed across 3 repeats")
+        narrow = [r for r in values if r["suite"] == "benchmark" and r["case"] == narrow_case]
+        if (len(narrow) != 1 or narrow_case not in original
+                or narrow[0]["observed_skill_read_output_words"] >= original[narrow_case]["observed_skill_read_output_words"]):
             errors.append(f"{model}: narrow-task context reduction not established")
     return errors
 

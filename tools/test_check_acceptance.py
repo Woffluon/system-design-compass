@@ -2,7 +2,10 @@
 
 import unittest
 
-from check_acceptance import check
+if __package__:
+    from .check_acceptance import check
+else:
+    from check_acceptance import check
 
 
 class AcceptanceTests(unittest.TestCase):
@@ -44,6 +47,33 @@ class AcceptanceTests(unittest.TestCase):
         self.assertTrue(check(self.baseline, self.candidate, ["model"], self.suites))
         self.candidate.append(self.record("benchmark", "harder", "candidate", 1, True, 50))
         self.assertEqual(check(self.baseline, self.candidate, ["model"], self.suites), [])
+
+    def test_error_message_states_three_repeats(self):
+        errors = check(self.baseline, self.candidate[:-1], ["model"], self.suites)
+        self.assertTrue(any("no hard-case correction confirmed across 3 repeats" in e for e in errors), errors)
+
+    def test_custom_excluded_hard_and_narrow_case_parameters(self):
+        suites = [
+            {"name": "benchmark", "cases": [{"id": x} for x in ("hard", "small-adr", "sound-system")]},
+            {"name": "regression", "cases": [{"id": "existing"}]},
+        ]
+        baseline = [
+            self.record("benchmark", c, condition, 1, not (c == "hard" and condition == "current"), 100)
+            for condition in ("none", "current")
+            for c in ("hard", "small-adr", "sound-system")
+        ]
+        candidate = [
+            self.record("benchmark", c, "candidate", 1, True, 50)
+            for c in ("hard", "small-adr", "sound-system")
+        ]
+        candidate += [self.record("regression", "existing", "candidate", 1, True, 50)]
+        candidate += [self.record("benchmark", "hard", "candidate", n, True, 50) for n in (2, 3)]
+        errors = check(
+            baseline, candidate, ["model"], suites,
+            excluded_hard={"small-adr", "sound-system"},
+            narrow_case="small-adr",
+        )
+        self.assertEqual(errors, [])
 
 
 if __name__ == "__main__":
