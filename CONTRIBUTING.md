@@ -20,7 +20,7 @@ Contributions should expose a missing trade-off, catch a concrete failure sequen
 
 - Do not copy prose, diagrams, or tables from books, courses, or unlicensed repositories.
 - Ground claims in official vendor documentation, engineering standards, research papers, or first-party incident and architecture reports. Cite the exact source when referencing version-sensitive limits.
-- Keep [`skills/system-design-compass/SKILL.md`](skills/system-design-compass/SKILL.md) compact (currently `447` words; the validator ceiling is `500` words and `300` lines). Put conditional depth in the relevant file under [`skills/system-design-compass/references/`](skills/system-design-compass/references/) (each capped at `2,500` words with at least one `## ` section heading) and link it directly from `SKILL.md`.
+- Keep [`skills/system-design-compass/SKILL.md`](skills/system-design-compass/SKILL.md) compact (currently `449` words; the validator ceiling is `500` words and `300` lines). Put conditional depth in the relevant file under [`skills/system-design-compass/references/`](skills/system-design-compass/references/) (each capped at `2,500` words with at least one `## ` section heading) and link it directly from `SKILL.md`.
 - Define invariants, failure semantics, and validity boundaries before naming specific products.
 - Preserve user control. Skill recommendations never authorize unrequested code mutations, deployments, or external network actions.
 - Keep reference guidance in English while preserving the rule to respond in the requester's language.

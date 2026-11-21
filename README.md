@@ -9,7 +9,7 @@ A zero-dependency [Agent Skills](https://agentskills.io/specification) package t
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-compatible-0f172a)](https://agentskills.io/specification)
 [![Version](https://img.shields.io/badge/version-1.2.0-0f172a)](skills/system-design-compass/SKILL.md)
 [![Benchmark](https://img.shields.io/badge/Gemini_3.8_benchmark-8%2F8_passed-2ea44f)](#measured-results-and-current-limits)
-[![Entrypoint](https://img.shields.io/badge/entrypoint-447_words-2563eb)](skills/system-design-compass/SKILL.md)
+[![Entrypoint](https://img.shields.io/badge/entrypoint-449_words-2563eb)](skills/system-design-compass/SKILL.md)
 [![Dependencies](https://img.shields.io/badge/runtime_dependencies-0-0f172a)](#repository-structure-and-runtime-boundary)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0f172a)](LICENSE)
 
@@ -86,7 +86,7 @@ Architecture advice becomes actionable when it states where a guarantee is enfor
 
 ## How the skill routes decisions
 
-The 447-word [entrypoint](skills/system-design-compass/SKILL.md) routes requests by the unresolved decision. Narrow Architectural Decision Records (ADRs) use the supplied facts and the entrypoint alone unless a decision-changing guarantee is missing. Broader requests open one workflow guide and only the specific boundary or workload sections that apply.
+The 449-word [entrypoint](skills/system-design-compass/SKILL.md) routes requests by the unresolved decision. Narrow Architectural Decision Records (ADRs) use the supplied facts and the entrypoint alone unless a decision-changing guarantee is missing. Broader requests open one workflow guide and only the specific boundary or workload sections that apply.
 
 ```mermaid
 flowchart LR
@@ -94,7 +94,7 @@ flowchart LR
     classDef cobalt fill:#2563eb,stroke:#1d4ed8,color:#ffffff,stroke-width:2px
     classDef slate fill:#f8fafc,stroke:#0f172a,color:#0f172a,stroke-width:1.5px
 
-    Req["Architecture Request + Evidence"]:::slate --> Entry["SKILL.md Entrypoint (447 words)"]:::cobalt
+    Req["Architecture Request + Evidence"]:::slate --> Entry["SKILL.md Entrypoint (449 words)"]:::cobalt
 
     Entry -->|"Narrow ADR"| Narrow["Direct ADR Decision (Latency, Isolation, Retry Safety, Cost, Trigger)"]:::slate
     Entry -->|"Broad Workflow"| Modes["Mode Guides (design / review / evolve / interview)"]:::navy
@@ -160,7 +160,7 @@ The repository separates the distributable skill package ([Agent Skills specific
 system-design-compass/
 ├── .gitattributes                         # Enforces LF line endings across platforms (* text=auto eol=lf)
 ├── skills/system-design-compass/          # Distributable skill package (zero runtime dependencies)
-│   ├── SKILL.md                           # 447-word routing entrypoint and proof obligations
+│   ├── SKILL.md                           # 449-word routing entrypoint and proof obligations
 │   ├── agents/openai.yaml                 # Optional agent UI metadata ($system-design-compass)
 │   └── references/                        # 14 on-demand Markdown guides (<= 2,500 words each)
 ├── .agents/skills/system-design-compass/  # Workspace skill mirror synced via validate_repo.py --fix-mirror
@@ -190,7 +190,7 @@ The [evaluation report](evals/results/2026-10-01.md) separates behavioral qualit
 
 | Measurement or cohort | Evidence recorded in repository | Scope and interpretation |
 |---|---|---|
-| **Entrypoint size (`original` -> `1.1.0` -> `1.2.0`)** | `594` (`original`) -> `450` (`rc.9`) -> `469` (`rc.10`) -> `397` (`1.1.0`) -> **`447` words (`1.2.0`)**. | Meets the `<= 500`-word and `<= 300`-line limits enforced by `validate_repo.py`. |
+| **Entrypoint size (`original` -> `1.1.0` -> `1.2.0`)** | `594` (`original`) -> `450` (`rc.9`) -> `469` (`rc.10`) -> `397` (`1.1.0`) -> **`449` words (`1.2.0`)**. | Meets the `<= 500`-word and `<= 300`-line limits enforced by `validate_repo.py`. |
 | **Frozen `1.1.0` (`667dc44`) snapshot (`gemini-3.8-flash-medium`): `8/8` benchmark passed** | `40/44` rubric checks passed (`0` critical failures, `0` unsafe answers, `2,307` median read words, `1,052` words on `narrow-adr`). | Tool-free blind grading on the 8 core benchmark cases (`repeat 1`, frozen `667dc44` snapshot prior to `12b6def`/`29e988c` and `1.2.0` updates; `skill_digest: 56723ba...`). |
 | **`rc.9` narrow-ADR read words (`3.6` / `3.8` Flash Medium)** | `1,248` -> `1,105` words (`-11.5%`) on `3.6`; `2,723` -> `789` words (`-71.0%`) on `3.8`. | Measures returned command-output words on paired narrow ADR runs as an approximate context proxy. |
 | **`rc.9` full two-model comparison (`71` graded answers)** | `3.6` passed `6/8` core and `7/8` regression; `3.8` passed `7/8` core and `7/8` regression. | Did not pass the full two-model release gate (`check_acceptance.py`) due to webhook, wallet, and rollback omissions. |
