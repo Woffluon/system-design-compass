@@ -137,7 +137,6 @@ def run_suite(args) -> None:
     if args.condition != "none" and not args.skill:
         raise ValueError("a frozen skill is required")
     effort = getattr(args, "effort", "medium")
-    command_base = cli_command()
     args.output.mkdir(parents=True, exist_ok=True)
     source = e.digest(args.skill) if args.condition != "none" else None
     jobs = []
@@ -170,6 +169,9 @@ def run_suite(args) -> None:
                 jobs.append((model, case, identifier, path))
         if len(list(args.output.glob("*.json"))) + len(jobs) > args.limit:
             raise ValueError("trial cap exceeded")
+        if not jobs:
+            return
+        command_base = cli_command()
         for _, _, identifier, path in jobs:
             e.write_json(
                 path,

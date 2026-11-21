@@ -106,8 +106,9 @@ class AntigravityTraceTests(unittest.TestCase):
 
             # Re-running with changed effort raises ValueError.
             args.effort = "low"
-            with self.assertRaisesRegex(ValueError, "immutable trial"):
-                evaluate_agy.run_suite(args)
+            with patch.object(evaluate_agy, "cli_command", return_value=["agy"]):
+                with self.assertRaisesRegex(ValueError, "immutable trial"):
+                    evaluate_agy.run_suite(args)
 
             # Uncaught exception in run() records failed status and error field instead of reserved.
             args.repeat = 2
@@ -155,8 +156,9 @@ class AntigravityTraceTests(unittest.TestCase):
 
             (output / "run.lock").write_text("pid=1\n", encoding="utf-8")
             args.repeat = 2
-            with self.assertRaisesRegex(ValueError, "run\\.lock"):
-                evaluate_agy.run_suite(args)
+            with patch.object(evaluate_agy, "cli_command", return_value=["agy"]):
+                with self.assertRaisesRegex(ValueError, "run\\.lock"):
+                    evaluate_agy.run_suite(args)
 
 
 if __name__ == "__main__":
