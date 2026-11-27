@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import sys
@@ -24,6 +25,18 @@ LINK_PATTERN = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
 HEADING_PATTERN = re.compile(r"^#{1,6}\s+(.+?)\s*$", re.MULTILINE)
 PLACEHOLDER_PATTERN = re.compile(r"\[(?:TODO|PLACEHOLDER)[^\]]*\]|\bFIXME\b", re.IGNORECASE)
 BLOCK_SCALAR_PATTERN = re.compile(r"^(?:[|>][+-]?\d*|[|>]\d+[+-]?)$")
+DISALLOWED_SCRIPT_MODULES = frozenset({
+    "subprocess",
+    "socket",
+    "http",
+    "urllib",
+    "ftplib",
+    "smtplib",
+    "telnetlib",
+    "xmlrpc",
+    "ctypes",
+    "webbrowser",
+})
 
 
 def heading_slug(heading: str) -> str:
@@ -433,20 +446,106 @@ def check_markdown(
                     )
 
 
+def _iter_allowed_skill_files(root: Path) -> list[Path]:
+    """Return sorted file paths allowed in the distributable skill package."""
+    scripts_dir = root / "scripts"
+    allowed: list[Path] = []
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(root)
+        if rel.parts[0] != "scripts" and path.suffix.lower() in {".md", ".yaml", ".yml"}:
+            allowed.append(path)
+        elif path.parent == scripts_dir and path.suffix.lower() == ".py":
+            allowed.append(path)
+    return allowed
+
+
+def _validate_script_module(
+    errors: list[str],
+    rel_posix: str,
+    module_name: str,
+) -> None:
+    root_mod = module_name.split(".")[0]
+    if root_mod in DISALLOWED_SCRIPT_MODULES:
+        errors.append(f"script {rel_posix} imports disallowed module: {module_name}")
+    elif root_mod != "__future__" and root_mod not in sys.stdlib_module_names:
+        errors.append(f"script {rel_posix} imports non-stdlib module: {module_name}")
+
+
+def _check_script_ast(
+    errors: list[str],
+    script_path: Path,
+    rel_posix: str,
+) -> None:
+    try:
+        source = script_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        errors.append(f"cannot read script {rel_posix}: {exc}")
+        return
+
+    try:
+        tree = ast.parse(source, filename=rel_posix)
+    except SyntaxError as exc:
+        errors.append(f"syntax error in script {rel_posix}: {exc}")
+        return
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                _validate_script_module(errors, rel_posix, alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level > 0:
+                errors.append(f"script {rel_posix} must not use relative import")
+            elif node.module:
+                _validate_script_module(errors, rel_posix, node.module)
+        elif isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id in {"eval", "exec"}:
+                errors.append(f"script {rel_posix} must not call {node.func.id}()")
+
+
 def check_runtime_surface(
     errors: list[str],
     skill_root: Path | None = None,
 ) -> None:
     root = skill_root if skill_root is not None else SKILL_ROOT
-    if (root / "scripts").exists():
-        errors.append("the distributable skill must not contain a scripts directory")
-
+    scripts_dir = root / "scripts"
     allowed_suffixes = {".md", ".yaml", ".yml"}
-    for path in root.rglob("*"):
-        if path.is_file() and path.suffix.lower() not in allowed_suffixes:
-            errors.append(
-                f"unexpected runtime file type: {path.relative_to(root)}"
-            )
+    script_files: list[Path] = []
+
+    for path in sorted(root.rglob("*")):
+        rel = path.relative_to(root)
+        rel_posix = rel.as_posix()
+        if path.is_dir():
+            if rel.parts[0] == "scripts" and len(rel.parts) > 1:
+                errors.append(f"unexpected subdirectory in scripts/: {rel_posix}")
+            elif path.name == "__pycache__":
+                errors.append(f"unexpected __pycache__ directory: {rel_posix}")
+            continue
+        if not path.is_file():
+            continue
+        if rel.parts[0] == "scripts":
+            if path.parent != scripts_dir or path.suffix.lower() != ".py":
+                errors.append(f"unexpected runtime file type: {rel_posix}")
+            else:
+                script_files.append(path)
+        elif path.suffix.lower() not in allowed_suffixes:
+            errors.append(f"unexpected runtime file type: {rel_posix}")
+
+    for script_path in script_files:
+        _check_script_ast(errors, script_path, script_path.relative_to(root).as_posix())
+
+    if script_files:
+        skill_file = SKILL_FILE if (skill_root is None and root == SKILL_ROOT) else root / "SKILL.md"
+        if skill_file.is_file():
+            skill_text = skill_file.read_text(encoding="utf-8")
+            for script_path in script_files:
+                rel_script = script_path.relative_to(root).as_posix()
+                ref_pattern = re.compile(
+                    rf"(?<![\w.-])(?:{re.escape(rel_script)}|{re.escape(script_path.name)})\b"
+                )
+                if not ref_pattern.search(skill_text):
+                    errors.append(f"SKILL.md must reference script: {rel_script}")
 
     metadata_file = root / "agents" / "openai.yaml"
     if metadata_file.is_file():
@@ -513,16 +612,13 @@ def check_workspace_mirror(
 
     check_runtime_surface(errors, skill_root=mirror_root)
 
-    allowed_suffixes = {".md", ".yaml", ".yml"}
     source_files = {
         path.relative_to(source_root).as_posix(): path
-        for path in sorted(source_root.rglob("*"))
-        if path.is_file() and path.suffix.lower() in allowed_suffixes
+        for path in _iter_allowed_skill_files(source_root)
     }
     mirror_files = {
         path.relative_to(mirror_root).as_posix(): path
-        for path in sorted(mirror_root.rglob("*"))
-        if path.is_file() and path.suffix.lower() in allowed_suffixes
+        for path in _iter_allowed_skill_files(mirror_root)
     }
 
     for rel_path, source_path in source_files.items():
@@ -550,11 +646,9 @@ def fix_workspace_mirror(
         if workspace_skill_root is not None
         else WORKSPACE_SKILL_ROOT
     )
-    allowed_suffixes = {".md", ".yaml", ".yml"}
     source_files = {
         path.relative_to(source_root).as_posix(): path
-        for path in sorted(source_root.rglob("*"))
-        if path.is_file() and path.suffix.lower() in allowed_suffixes
+        for path in _iter_allowed_skill_files(source_root)
     }
     mirror_root.mkdir(parents=True, exist_ok=True)
     for rel_path, source_path in source_files.items():

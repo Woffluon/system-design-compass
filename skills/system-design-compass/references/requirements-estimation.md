@@ -2,6 +2,8 @@
 
 > Use this reference when requirements are vague, quality attributes drive architecture, or scale must be quantified.
 
+**Contents:** [Requirements](#turn-goals-into-requirements) · [Service objectives](#define-service-objectives-from-user-experience) · [Estimation & capacity](#estimate-only-decision-driving-quantities) · [Sanity checks](#sanity-check-the-model)
+
 ## Turn goals into requirements
 
 Prioritize functional journeys, measurable quality attributes, fixed constraints, and explicit non-goals as critical, important, or optional; if everything is highest priority, no trade-off can be made. Express critical quality attributes as a six-field scenario:
@@ -78,11 +80,14 @@ net_attempt_drain_rate = degraded_attempt_capacity - (arrival_rate + duplicate_r
 time_to_clear_backlog = attempt_backlog / net_attempt_drain_rate
 ```
 
-Verify drain and capacity arithmetic with a one-line stdlib check before finalizing:
-
-```bash
-python -c "cap=W*(1-loss)*r; dem=arr*(1+dup)*(1+ret); print(f'cap={cap:.1f}/s dem={dem:.1f}/s net={cap-dem:.1f}/s')"
-```
+When CLI tools are available, run `scripts/capacity_check.py` (stdlib) with
+explicit parameters (`--arrival-rate`, `--unit`, `--duplicate-fraction`,
+`--retry-factor`, `--workers`, `--failure-allowance`, `--worker-rate`,
+`--backlog`, `--format`) to verify degraded attempt capacity, demand, and
+drain time. In tool-free chats, show each substitution step explicitly using
+`peak_attempt_demand = peak_unique_arrival_rate * (1 + dup) * (1 + retry)`
+and `degraded_attempt_capacity = provisioned_workers * (1 - loss) * rate`,
+keeping unmeasured variables symbolic rather than inventing numbers.
 
 (Equivalently, in unique-job terms: `net_job_drain_rate = degraded_success_capacity - unique_arrival_rate` and `time_to_clear_backlog = unique_job_backlog / net_job_drain_rate`.) Drain time is unbounded whenever degraded completion capacity does not strictly exceed sustained arrivals plus retries. Recompute proposed remedies under the same degraded failure scenario and reconcile summary totals with this flow balance.
 

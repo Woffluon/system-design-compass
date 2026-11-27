@@ -201,16 +201,83 @@ class ValidateRepoTests(unittest.TestCase):
             self.assertTrue(any("missing file: agents/openai.yaml" in e for e in errors), errors)
             self.assertTrue(any("unexpected extra file" in e and "extra.md" in e for e in errors), errors)
 
-    def test_runtime_surface_rejects_scripts_and_non_markdown_or_yaml(self) -> None:
+            # scripts/*.py LF drift and __pycache__ in mirror are detected.
+            (skill_root / "scripts").mkdir()
+            (skill_root / "scripts" / "capacity_check.py").write_text(
+                "import sys\nprint(sys.version_info[0])\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            (skill_root / "SKILL.md").write_text(
+                VALID_SKILL_MD + "\nRun `scripts/capacity_check.py`.\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            validate_repo.fix_workspace_mirror(skill_root=skill_root, workspace_skill_root=mirror_root)
+            clean_errors: list[str] = []
+            check_workspace_mirror(clean_errors, skill_root=skill_root, workspace_skill_root=mirror_root)
+            self.assertEqual(clean_errors, [])
+
+            mirror_script = mirror_root / "scripts" / "capacity_check.py"
+            mirror_script.write_bytes(mirror_script.read_bytes().replace(b"\n", b"\r\n"))
+            (mirror_root / "scripts" / "__pycache__").mkdir()
+            (mirror_root / "scripts" / "__pycache__" / "capacity_check.cpython-315.pyc").write_bytes(b"pyc")
+            script_mirror_errors: list[str] = []
+            check_workspace_mirror(script_mirror_errors, skill_root=skill_root, workspace_skill_root=mirror_root)
+            self.assertTrue(any("out of sync" in e and "scripts/capacity_check.py" in e for e in script_mirror_errors), script_mirror_errors)
+            self.assertTrue(any("__pycache__" in e for e in script_mirror_errors), script_mirror_errors)
+
+    def test_runtime_surface_allows_stdlib_scripts_with_skill_reference(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             skill_root = Path(tmp) / "skills" / "system-design-compass"
             build_valid_skill_tree(skill_root)
             (skill_root / "scripts").mkdir()
-            (skill_root / "helper.py").write_text("print('hi')\n", encoding="utf-8")
+            (skill_root / "scripts" / "capacity_check.py").write_text(
+                "from __future__ import annotations\nimport argparse\nimport json\nimport math\nimport sys\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            (skill_root / "SKILL.md").write_text(
+                VALID_SKILL_MD + "\nRun `scripts/capacity_check.py` for capacity checks.\n",
+                encoding="utf-8",
+                newline="\n",
+            )
             errors: list[str] = []
             check_runtime_surface(errors, skill_root=skill_root)
-            self.assertTrue(any("scripts directory" in e for e in errors), errors)
-            self.assertTrue(any("unexpected runtime file type" in e for e in errors), errors)
+            self.assertEqual(errors, [])
+
+    def test_runtime_surface_rejects_disallowed_files_imports_calls_and_syntax_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_root = Path(tmp) / "skills" / "system-design-compass"
+            build_valid_skill_tree(skill_root)
+            (skill_root / "scripts").mkdir()
+            (skill_root / "scripts" / "sub").mkdir()
+            (skill_root / "scripts" / "__pycache__").mkdir()
+            (skill_root / "scripts" / "__pycache__" / "foo.pyc").write_bytes(b"pyc")
+            (skill_root / "scripts" / "run.sh").write_text("#!/bin/sh\n", encoding="utf-8")
+            (skill_root / "scripts" / "run.ps1").write_text("Write-Host ok\n", encoding="utf-8")
+            (skill_root / "helper.py").write_text("print('hi')\n", encoding="utf-8")
+            (skill_root / "scripts" / "bad_third_party.py").write_text("import yaml\n", encoding="utf-8")
+            (skill_root / "scripts" / "bad_subprocess.py").write_text("import subprocess\n", encoding="utf-8")
+            (skill_root / "scripts" / "bad_urllib.py").write_text("from urllib.request import urlopen\n", encoding="utf-8")
+            (skill_root / "scripts" / "bad_eval.py").write_text("eval('1 + 1')\n", encoding="utf-8")
+            (skill_root / "scripts" / "bad_relative.py").write_text("from . import capacity_check\n", encoding="utf-8")
+            (skill_root / "scripts" / "bad_syntax.py").write_text("def broken(:\n", encoding="utf-8")
+
+            errors: list[str] = []
+            check_runtime_surface(errors, skill_root=skill_root)
+            self.assertTrue(any("unexpected runtime file type: helper.py" in e for e in errors), errors)
+            self.assertTrue(any("unexpected subdirectory in scripts/: scripts/sub" in e for e in errors), errors)
+            self.assertTrue(any("scripts/__pycache__" in e and ".pyc" in e for e in errors), errors)
+            self.assertTrue(any("unexpected runtime file type: scripts/run.sh" in e for e in errors), errors)
+            self.assertTrue(any("unexpected runtime file type: scripts/run.ps1" in e for e in errors), errors)
+            self.assertTrue(any("bad_third_party.py" in e and "non-stdlib" in e for e in errors), errors)
+            self.assertTrue(any("bad_subprocess.py" in e and "disallowed module" in e for e in errors), errors)
+            self.assertTrue(any("bad_urllib.py" in e and "disallowed module" in e for e in errors), errors)
+            self.assertTrue(any("bad_eval.py" in e and "eval()" in e for e in errors), errors)
+            self.assertTrue(any("bad_relative.py" in e and "relative import" in e for e in errors), errors)
+            self.assertTrue(any("bad_syntax.py" in e and "syntax error" in e for e in errors), errors)
+            self.assertTrue(any("SKILL.md must reference script" in e for e in errors), errors)
 
     def test_frontmatter_rejects_invalid_name_long_description_xml_and_empty_block(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -379,21 +446,37 @@ class ValidateRepoTests(unittest.TestCase):
             skill_root = root / "skills" / "system-design-compass"
             mirror_root = root / ".agents" / "skills" / "system-design-compass"
             build_valid_skill_tree(skill_root)
-            # Put CRLF in source SKILL.md to confirm mirror gets LF.
+            # Put CRLF in source SKILL.md and a script to confirm mirror gets LF.
             src_skill = skill_root / "SKILL.md"
+            src_skill.write_text(
+                VALID_SKILL_MD + "\nRun `scripts/capacity_check.py`.\n",
+                encoding="utf-8",
+                newline="\n",
+            )
             src_skill.write_bytes(src_skill.read_bytes().replace(b"\n", b"\r\n"))
+            (skill_root / "scripts").mkdir()
+            src_script = skill_root / "scripts" / "capacity_check.py"
+            src_script.write_bytes(b"import sys\r\nprint(sys.version_info[0])\r\n")
 
             (mirror_root / "references").mkdir(parents=True)
             (mirror_root / "references" / "stale.md").write_text("## Stale\n", encoding="utf-8")
             (mirror_root / "stray.py").write_text("x = 1\n", encoding="utf-8")
+            (mirror_root / "scripts" / "__pycache__").mkdir(parents=True)
+            (mirror_root / "scripts" / "__pycache__" / "stale.pyc").write_bytes(b"pyc")
 
             validate_repo.fix_workspace_mirror(skill_root=skill_root, workspace_skill_root=mirror_root)
             self.assertFalse((mirror_root / "references" / "stale.md").exists())
             self.assertFalse((mirror_root / "stray.py").exists())
+            self.assertFalse((mirror_root / "scripts" / "__pycache__").exists())
             self.assertNotIn(b"\r\n", (mirror_root / "SKILL.md").read_bytes())
+            self.assertEqual(
+                (mirror_root / "scripts" / "capacity_check.py").read_bytes(),
+                b"import sys\nprint(sys.version_info[0])\n",
+            )
 
             # When source is LF too, check_workspace_mirror passes completely.
             src_skill.write_bytes(src_skill.read_bytes().replace(b"\r\n", b"\n"))
+            src_script.write_bytes(src_script.read_bytes().replace(b"\r\n", b"\n"))
             errors: list[str] = []
             check_workspace_mirror(errors, skill_root=skill_root, workspace_skill_root=mirror_root)
             self.assertEqual(errors, [])

@@ -22,6 +22,7 @@ MAX_RUNS = 94
 DEFAULT_BLIND_SEED = 20260930
 PROTOCOL = "isolated-catalog-v3"
 READ_PATH = re.compile(r"references[/\\][\w.-]+\.md|\bSKILL\.md\b")
+SCRIPT_PATH = re.compile(r"scripts[/\\][\w.-]+\.py")
 # Shared external-skill contamination pattern across Codex, Agents, and Gemini catalogs.
 OTHER_SKILL_PATTERN = re.compile(r"[.](?:codex|agents)/(?:skills|plugins)|[.]gemini/")
 LISTING_COMMAND_PATTERN = re.compile(
@@ -129,7 +130,7 @@ def parse_events(raw: str) -> list[dict]:
 
 
 def metrics(events: list[dict]) -> dict:
-    reads, words, characters, commands, contamination = [], 0, 0, 0, []
+    reads, script_runs, words, characters, commands, contamination = [], set(), 0, 0, 0, []
     answer, usage, completed = [], None, False
     for event in events:
         if event.get("type") in {"turn.completed", "turn.failed"}:
@@ -146,6 +147,7 @@ def metrics(events: list[dict]) -> dict:
         command = item.get("command", "")
         normalized = re.sub(r"\\+", "/", command)
         paths = sorted(set(READ_PATH.findall(normalized)))
+        scripts = SCRIPT_PATH.findall(normalized)
         listing_only = (
             LISTING_COMMAND_PATTERN.search(command)
             and not CONTENT_READ_PATTERN.search(command)
@@ -155,6 +157,8 @@ def metrics(events: list[dict]) -> dict:
             output = item.get("aggregated_output", "")
             words += len(output.split())
             characters += len(output)
+        if scripts and not listing_only:
+            script_runs.update(path.replace("\\", "/") for path in scripts)
         if OTHER_SKILL_PATTERN.search(normalized):
             contamination.append(command)
     return {
@@ -167,6 +171,7 @@ def metrics(events: list[dict]) -> dict:
         "repeated_skill_reads": len(reads) - len(set(reads)),
         "observed_skill_read_output_words": words,
         "observed_skill_read_output_characters": characters,
+        "observed_script_runs": sorted(script_runs),
         "other_skill_commands": contamination,
         "measurement_note": "Observed command-output proxy, not skill tokens or a complete bound. Mixed commands overcount; indirect/variable reads can be unobserved. Inspect raw traces before a context claim.",
     }
