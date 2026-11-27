@@ -15,7 +15,7 @@ Once a private channel is open, provide the minimum evidence needed to reproduce
 
 | Field | Required detail |
 |---|---|
-| Affected surface | File path, section heading, and commit SHA or release version (`1.1.0`). |
+| Affected surface | File path, section heading, and commit SHA or release version (`1.2.0`). |
 | Reproduction | Minimal prompt and sanitized fixture files. |
 | Harness environment | Coding agent CLI or IDE, enabled tools, sandbox mode, and permission flags. |
 | Observed behavior | Unsafe recommendation, instruction-injection path, or isolation bypass with a sanitized trace. |
@@ -25,7 +25,7 @@ Once a private channel is open, provide the minimum evidence needed to reproduce
 
 | Surface | Security responsibility |
 |---|---|
-| Distributed skill (`skills/system-design-compass/`) | Markdown guidance (`SKILL.md` and `14` reference files) plus static UI metadata (`agents/openai.yaml`). Ships zero executable scripts, pre-approved `allowed-tools`, credentials, or runtime network calls, enforced by [`tools/validate_repo.py`](tools/validate_repo.py). |
+| Distributed skill (`skills/system-design-compass/`) | Markdown guidance (`SKILL.md` and `17` reference files), static UI metadata (`agents/openai.yaml`), and `2` optional Python 3 stdlib-only verification scripts (`scripts/capacity_check.py`, `scripts/check_deliverable.py`). The scripts process CLI arguments, `stdin`, or local input files only, with zero third-party packages, network calls, subprocesses, `eval`/`exec`, pre-approved `allowed-tools`, or credentials, enforced via AST checks in [`tools/validate_repo.py`](tools/validate_repo.py). |
 | Agent harness | Enforces tool execution policies, filesystem sandboxing, network access, and user approval prompts. Markdown files supply advisory context only; the host OS and agent harness enforce access control. |
 | User request | Authorizes code changes or external actions. Skill guidance never expands user-granted permissions. |
 | Repository evaluation tools (`tools/*.py`) | Local development scripts that run `codex` or `agy` CLIs inside temporary directories. These scripts are excluded from the distributable skill package. |

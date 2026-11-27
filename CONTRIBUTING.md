@@ -20,7 +20,7 @@ Contributions should expose a missing trade-off, catch a concrete failure sequen
 
 - Do not copy prose, diagrams, or tables from books, courses, or unlicensed repositories.
 - Ground claims in official vendor documentation, engineering standards, research papers, or first-party incident and architecture reports. Cite the exact source when referencing version-sensitive limits.
-- Keep [`skills/system-design-compass/SKILL.md`](skills/system-design-compass/SKILL.md) compact (currently `449` words; the validator ceiling is `500` words and `300` lines). Put conditional depth in the relevant file under [`skills/system-design-compass/references/`](skills/system-design-compass/references/) (each capped at `2,500` words with at least one `## ` section heading) and link it directly from `SKILL.md`.
+- Keep [`skills/system-design-compass/SKILL.md`](skills/system-design-compass/SKILL.md) compact (currently `481` words; the validator ceiling is `500` words and `300` lines). Put conditional depth in the relevant file under [`skills/system-design-compass/references/`](skills/system-design-compass/references/) (each capped at `2,500` words with at least one `## ` section heading) and link it directly from `SKILL.md`.
 - Define invariants, failure semantics, and validity boundaries before naming specific products.
 - Preserve user control. Skill recommendations never authorize unrequested code mutations, deployments, or external network actions.
 - Keep reference guidance in English while preserving the rule to respond in the requester's language.
@@ -36,8 +36,8 @@ The repository validator ([`tools/validate_repo.py`](tools/validate_repo.py)) en
 | **Reference budgets (`check_reference_budgets`)** | Every `.md` file in `skills/system-design-compass/references/` must be non-empty, contain at least one level-2 section heading (`## `), and have at most `2,500` whitespace-delimited words (`MAX_REFERENCE_WORDS = 2500`). |
 | **Markdown and anchor hygiene (`check_markdown`)** | Across repository `.md` files: no draft placeholder brackets or fix-me markers, no duplicate headings (case-insensitive) within the same file, every local relative link must resolve inside the repository root, and every Markdown `#anchor` target (same-file or cross-file) must match a normalized heading slug (`heading_slug`) in the target `.md` file. |
 | **Eval JSON validity (`check_eval_json`)** | Every `.json` file under `evals/` (excluding `evals/artifacts/`) must parse cleanly with standard `json.loads()`. |
-| **Zero-dependency runtime (`check_runtime_surface`)** | `skills/system-design-compass/` must not contain a `scripts/` directory, may only contain `.md`, `.yaml`, or `.yml` files, and `agents/openai.yaml` must include `$system-design-compass` without declaring `dependencies:`. |
-| **Workspace mirror sync (`check_workspace_mirror`)** | When `.agents/skills/system-design-compass/` exists, its `.md`, `.yaml`, and `.yml` file set, runtime surface, and exact file bytes (LF line endings) must match `skills/system-design-compass/` with no missing, out-of-sync, or extra files. |
+| **Runtime surface and stdlib scripts (`check_runtime_surface`)** | Root, `agents/`, and `references/` may only contain `.md`, `.yaml`, or `.yml` files; `scripts/` may only contain flat `scripts/*.py` files (no subdirectories or `__pycache__`). Each `scripts/*.py` file must pass `ast.parse`, import only Python 3 stdlib modules (`sys.stdlib_module_names` plus `__future__`), avoid relative imports, `eval()`/`exec()`, and disallowed network/subprocess/FFI modules (`subprocess`, `socket`, `http`, `urllib`, `ftplib`, `smtplib`, `telnetlib`, `xmlrpc`, `ctypes`, `webbrowser`), and be referenced in `SKILL.md`. `agents/openai.yaml` must include `$system-design-compass` without declaring `dependencies:`. |
+| **Workspace mirror sync (`check_workspace_mirror`)** | When `.agents/skills/system-design-compass/` exists, its distributable file set (`.md`, `.yaml`, `.yml`, and flat `scripts/*.py`), runtime surface, and exact file bytes (LF line endings) must match `skills/system-design-compass/` with no missing, out-of-sync, or extra files. |
 
 ## Validate the change
 
@@ -56,8 +56,8 @@ git diff --check
 | Verification step | What it proves |
 |---|---|
 | `python -B tools/validate_repo.py --fix-mirror` | Synchronizes `.agents/skills/system-design-compass/` from `skills/system-design-compass/` using LF line endings. |
-| `python -B tools/validate_repo.py` | Required files, entrypoint (`<= 500` words, `<= 300` lines) and reference (`<= 2,500` words, `## ` headings) budgets, 14 reference links, 28 workload archetypes, unique Markdown headings, local file and `#anchor` links, eval JSON syntax, runtime file boundaries, and the `.agents/skills/system-design-compass/` workspace mirror all pass. |
-| `python -B -m unittest discover -s tools -p 'test_*.py'` | All `58` unit tests across `test_check_acceptance.py`, `test_compare_evals.py`, `test_evaluate_agy.py`, `test_evaluate_skill.py`, and `test_validate_repo.py` pass without writing bytecode caches. |
+| `python -B tools/validate_repo.py` | Required files, entrypoint (`<= 500` words, `<= 300` lines) and reference (`<= 2,500` words, `## ` headings) budgets, 17 reference links, 28 workload archetypes, 2 stdlib-only `scripts/*.py` files, unique Markdown headings, local file and `#anchor` links, eval JSON syntax, runtime file boundaries, and the `.agents/skills/system-design-compass/` workspace mirror all pass. |
+| `python -B -m unittest discover -s tools -p 'test_*.py'` | All `60` unit tests across `test_check_acceptance.py`, `test_compare_evals.py`, `test_evaluate_agy.py`, `test_evaluate_skill.py`, and `test_validate_repo.py` pass without writing bytecode caches. |
 | `agentskills validate skills/system-design-compass` | Frontmatter and directory layout satisfy the `skills-ref==0.1.1` Agent Skills specification. |
 | `npx skills@1.5.26 add . --list` | The `system-design-compass` skill is discoverable by the `skills` CLI from a local checkout. |
 | `git diff --check` | No trailing whitespace, conflict markers, or formatting corruption were introduced. |
@@ -77,6 +77,6 @@ When modifying [`skills/system-design-compass/SKILL.md`](skills/system-design-co
 ## Prepare the pull request
 
 - State the concrete failure mode, documentation gap, or context overhead being fixed.
-- Paste the output of `python -B tools/validate_repo.py` and the `58` unit tests (`test_*.py`), along with any evaluation comparison summary if skill instructions changed.
+- Paste the output of `python -B tools/validate_repo.py` and the `60` unit tests (`test_*.py`), along with any evaluation comparison summary if skill instructions changed.
 - Remove any edit that cannot be traced directly to the stated problem.
 - Report unsafe agent behavior or evaluation-isolation bypasses privately through the [Security policy](SECURITY.md).

@@ -8,11 +8,11 @@ This document provides verified, field-by-field copy for publishing System Desig
 
 | Step | Form Section | Recommended Action or Value |
 |---|---|---|
-| **Step 1** | Skill ZIP Upload | Upload `system-design-compass.zip` (contains `SKILL.md`, `agents/`, `references/`). |
+| **Step 1** | Skill ZIP Upload | Upload `system-design-compass.zip` (contains `SKILL.md`, `agents/`, `references/`, `scripts/`). |
 | **Step 2** | Skill Details | Set Name, Summary (181 chars), Full Description, and upload `assets/system-design-compass-logo.png`. |
 | **Step 3** | See it in action (demo) | High-stakes Payment Wallet Settlement scenario with realistic prompt and complete oracle output. |
-| **Step 4** | Compatibility & Pricing | Set Compatibility Note (`skills` standard, zero dependencies) and select `Free (No charge)`. |
-| **Step 5** | Permissions & Setup | **CRITICAL FIX:** Clear auto-filled `apple-music-mcp/macOS/uv`. Check `Read Files` only; uncheck `Network Access`. |
+| **Step 4** | Compatibility & Pricing | Set Compatibility Note (`skills` standard, zero external dependencies) and select `Free (No charge)`. |
+| **Step 5** | Permissions & Setup | **CRITICAL FIX:** Clear auto-filled `apple-music-mcp/macOS/uv`. Check `Read Files` only (optional `Terminal / Shell` only for bundled stdlib verification scripts); uncheck `Network Access`. |
 | **Extra** | Tags, FAQ & Media | Fill 7 tags, 4 FAQs, and upload `assets/system-design-compass-hero.png` as screenshot. |
 
 ---
@@ -22,9 +22,10 @@ This document provides verified, field-by-field copy for publishing System Desig
 - **Field:** `Upload your skill ZIP *`
 - **File to Upload:** `system-design-compass.zip`
 - **Contents:** The distributable skill package located at `skills/system-design-compass/` containing:
-  - `SKILL.md` (397-word entrypoint)
+  - `SKILL.md` (481-word entrypoint)
   - `agents/openai.yaml` (UI metadata)
-  - `references/*.md` (14 on-demand Markdown guides)
+  - `references/*.md` (17 on-demand Markdown guides)
+  - `scripts/*.py` (2 optional stdlib-only Python 3 verification scripts: `capacity_check.py`, `check_deliverable.py`)
 - **Notice:** Excludes repository development tools, tests, and historical evaluation runs.
 
 ---
@@ -72,10 +73,10 @@ System Design Compass gives your coding agent a structured framework to audit ar
 
 ### How it works
 
-The skill uses selective on-demand routing. Instead of loading thousands of tokens on every conversation turn, a compact 397-word entrypoint (`SKILL.md`) routes requests by the unresolved decision:
+The skill uses selective on-demand routing. Instead of loading thousands of tokens on every conversation turn, a compact 481-word entrypoint (`SKILL.md`) routes requests by the unresolved decision:
 - **Narrow decisions:** Resolved directly within the entrypoint.
-- **Complex workflows:** Selectively loads only the relevant boundary reference among 14 focused guides or 28 production workload archetypes.
-- **Zero runtime dependencies:** Requires no external MCP servers, runtime scripts, or API keys. Follows the open Agent Skills specification.
+- **Complex workflows:** Selectively loads only the relevant boundary or domain reference among 17 focused guides or 28 production workload archetypes.
+- **Zero external dependencies:** Requires no external MCP servers, third-party packages, network calls, or API keys; includes 2 optional stdlib-only Python 3 verification scripts (`capacity_check.py`, `check_deliverable.py`). Follows the open Agent Skills specification.
 
 ### Three engineering reminders built into every review
 
@@ -137,7 +138,7 @@ I reviewed the payment wallet settlement flow. The primary risk is duplicate deb
 - **Field:** `Compatibility Note`
 - **Input Value:**
 ```text
-Compatible with any AI agent supporting the open Agent Skills specification (SKILL.md), including Claude Code, Cursor, Codex CLI, Gemini CLI, VS Code Copilot, and OpenCode. Requires zero runtime dependencies, no API keys, and no MCP servers. (Repository development and verification tools require Python 3.10+).
+Compatible with any AI agent supporting the open Agent Skills specification (SKILL.md), including Claude Code, Cursor, Codex CLI, Gemini CLI, VS Code Copilot, and OpenCode. Requires zero external dependencies, no API keys, no network calls, and no MCP servers; includes 2 optional Python 3 stdlib-only verification scripts. (Optional verification scripts and repository development tools require Python 3.10+).
 ```
 
 ### Pricing Model Field
@@ -162,11 +163,12 @@ None
 - **Field:** `Tools Used`
 - **Check:**
   - `[x] Read Files` (Needed so the agent can inspect repository code, schemas, and ADRs when requested).
+- **Optional:**
+  - `[ ] Terminal / Shell` (Optional: only needed if you want the agent to run the 2 bundled stdlib-only Python 3 verification scripts locally; skill guidance works without shell execution).
 - **Uncheck:**
-  - `[ ] Terminal / Shell`
   - `[ ] Write Files`
   - `[ ] Browser`
-  - `[ ] Network Access` (**CRITICAL:** Uncheck network access; skill is pure local markdown reasoning).
+  - `[ ] Network Access` (**CRITICAL:** Uncheck network access; the skill and its optional local scripts make zero network calls).
   - `[ ] Environment Variables`
 
 ### Needs Access To and Other Tool Fields
@@ -185,7 +187,7 @@ src/**, docs/**, *.md, *.json, *.yaml
 - **Field:** `Notes (optional)`
 - **Input Value:**
 ```text
-System Design Compass is a pure Markdown instruction skill following the Agent Skills specification. It requires zero API keys, no network access, and no runtime services. The Read Files permission is used solely to inspect repository code, schemas, and configuration when the user requests an architecture review or design recommendation.
+System Design Compass follows the open Agent Skills specification with 17 on-demand Markdown guides and 2 optional stdlib-only Python 3 verification scripts. It requires zero external packages, zero API keys, no network access, and no background runtime services. The Read Files permission is used solely to inspect repository code, schemas, and configuration when the user requests an architecture review or design recommendation.
 ```
 
 ---
@@ -218,7 +220,7 @@ Add the following 7 tags:
 ## Step 7: Extra Details and FAQ
 
 ### Metadata Properties
-- **Version:** `1.1.0`
+- **Version:** `1.2.0`
 - **Author:** `Woffluon`
 - **License:** `MIT`
 - **Repository URL:** `https://github.com/Woffluon/system-design-compass`
@@ -226,16 +228,16 @@ Add the following 7 tags:
 ### Frequently Asked Questions
 
 **Q1: Does this skill require any external API keys or MCP servers?**
-> A: No. System Design Compass is built entirely with pure Markdown guides. It has zero runtime dependencies, makes no external network calls, and requires no third-party API credentials.
+> A: No. System Design Compass ships 17 Markdown guides and 2 optional Python 3 stdlib-only verification scripts. It has zero external dependencies, makes no external network calls, and requires no third-party API credentials.
 
 **Q2: How does the skill prevent bloating the model context?**
-> A: The skill uses a condensed 397-word entrypoint (`SKILL.md`) that selectively routes requests. Narrow decisions are answered within the entrypoint. The agent loads deeper reference files only when specific boundary guarantees or workload archetypes are unresolved.
+> A: The skill uses a compact 481-word entrypoint (`SKILL.md`) that selectively routes requests. Narrow decisions are answered within the entrypoint. The agent loads deeper reference files only when specific boundary guarantees or workload archetypes are unresolved.
 
 **Q3: Which coding agents are supported?**
 > A: The skill follows the open Agent Skills specification (`agentskills.io`). It works across Claude Code, Cursor, Codex CLI, Gemini CLI, VS Code Copilot, and any environment that discovers `SKILL.md`.
 
 **Q4: How were the architectural recommendations verified?**
-> A: The repository includes a blind comparative evaluation suite (`evals/`). On the 1.1.0 candidate entrypoint, all 8/8 core benchmark cases passed under tool-free blind grading on Gemini 3.8 Flash Medium with zero critical violations.
+> A: The repository includes a blind comparative evaluation suite (`evals/`). On the frozen 1.1.0 candidate entrypoint, all 8/8 core benchmark cases passed under tool-free blind grading on Gemini 3.8 Flash Medium with zero critical violations.
 
 ---
 
