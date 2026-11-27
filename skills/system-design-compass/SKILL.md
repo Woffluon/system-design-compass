@@ -1,6 +1,6 @@
 ---
 name: system-design-compass
-description: Resolves architecture decisions for new or production system design, code-backed reviews, zero-downtime migrations, and scaling. Use when asked to write an RFC or decision record (ADR), compare async queues vs. sync calls, design idempotency, payment/ledger or lease boundaries, plan cutover/rollback phases, review reliability/tail-latency risks, or run a system design interview. Excludes routine coding, UI/UX design systems, local refactoring, CI/tooling bumps, behavioral interviews, or pure SQL/algorithm tuning without an architectural boundary.
+description: Resolves architecture decisions for new or production system design, call-graph code reviews, zero-downtime migrations, postmortem remediation, multi-tenant SaaS isolation, AI agent orchestration, and scaling. Use when asked to write an RFC or ADR, inspect .sql/.proto/openapi.yaml/schema.prisma/ADR-*.md/postmortem files, compare async queues vs. sync calls, design idempotency, ledger/lease boundaries, cutover/rollback phases, or run a system design interview. Excludes routine coding, implementing settled specs, UI/UX, local refactoring, CI bumps, behavioral interviews, single-file debugging/profiling, or pure SQL tuning.
 license: MIT
 metadata:
   author: Woffluon
@@ -26,10 +26,14 @@ completion, retry safety, cost drivers, and `Proposed` triggers.
 Broad or mixed work follows **Review -> Design -> Evolve**. Scan `##`
 headings first; read matching sections (>50% for full read):
 
-- [review](references/review.md),
+- [review](references/review.md) (including call-graph impact),
   [design](references/design.md),
   [evolution](references/evolve.md),
   [interview](references/interview.md)
+- Domain modules:
+  [AI agents](references/ai-agent-systems.md),
+  [multi-tenant](references/multitenant-saas.md),
+  [postmortem](references/postmortem-remediation.md)
 - Demand/readiness:
   [estimation](references/requirements-estimation.md),
   [production readiness](references/production-readiness.md)
@@ -83,6 +87,8 @@ mark unverified limits `[Unverified — requires primary doc check]`,
 and state skipped checks.
 Cite user artifacts and primary sources, never skill paths.
 
-Pre-output check (fix gaps): (1) math/units match, unknowns labeled;
-(2) thresholds `Proposed`, guarantees state owner, violating sequence,
-fault schedule, oracle, trigger; (3) no skill paths or unverified limits.
+Generate-verify-repair before answering:
+1. Run `scripts/check_deliverable.py` in CLI/IDE mode and fix gaps.
+2. Confirm matching units, `Proposed` thresholds, owner, violating
+   sequence, fault schedule, oracle, trigger, and zero skill paths.
+3. State any skipped check or unreachable doc explicitly.

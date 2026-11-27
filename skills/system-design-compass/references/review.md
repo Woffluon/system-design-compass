@@ -2,6 +2,8 @@
 
 > Assess a repository, design document, deployed system, or proposal for decision support rather than a generic checklist.
 
+**Contents:** [Rank evidence](#rank-evidence-and-separate-unknowns-from-defects) · [Critical paths](#trace-critical-paths-and-authoritative-state-owners) · [Call graphs & blind spots](#trace-call-graphs-and-report-static-blind-spots) · [Consequential risks](#evaluate-consequential-risks-with-violating-event-sequences) · [Findings & experiments](#pair-each-finding-with-the-smallest-surgical-fix-and-a-falsifiable-experiment) · [Verdict](#deliver-a-verdict-that-preserves-sound-decisions) · [Completion gate](#completion-gate)
+
 ## Rank evidence and separate unknowns from defects
 
 Define the review question, criticality, lifecycle stage, and evidence. Rank sources in order:
@@ -25,6 +27,28 @@ In large repositories (`500+` files), start with scoped search (`rg`) targeting 
 - Deployment, health gate, and rollback boundary.
 
 Identify trust boundaries, **authoritative state owner** per entity, synchronous dependency depth, queues, caches, consistency boundaries, shared failure domains, and tenant/regional isolation.
+
+## Trace call graphs and report static blind spots
+
+In `500+`-file repositories, avoid full-file dumps or arbitrary sampling. Start with hybrid discovery using `rg` plus any available symbol or call-graph index (e.g., Tree-sitter or compiler graph) to pinpoint entry points (`HTTP` handlers, queue consumers, `cron` jobs) and mutation or egress sinks (`INSERT`/`UPDATE`, ledger writes, external API clients). Pull only the relevant symbol bodies and call edges along the path under review.
+
+When LSP `callHierarchy` (`incomingCalls` / `outgoingCalls`) or an AST call graph is available, trace two ways: backward from sensitive sinks to verify auth and retry gates, and forward from entry points to uncover hidden side effects. Check resolution boundaries explicitly—TypeScript/JavaScript barrel `index.ts` re-exports can drop or misroute cross-package edges in large monorepos, and build-tagged files (`_linux.go`, `_windows.go`, or feature-gated targets) drop out of the active compile graph.
+
+Expand the static blast set beyond function calls to include out-of-band runtime contracts: shared database tables and views, message queues and broker topics (matched by `topic`/`queue` name), and `YAML`, `Dockerfile`, or deployment manifests that wire routing, timeouts, retries, or privileges.
+
+Static call graphs are soundy, not complete. Whenever paths cross dynamic dispatch (such as runtime handler maps), reflection, dependency-injection (DI) container bindings, framework lifecycle callbacks, or runtime feature flags, never claim full static coverage. Separate proven paths from unverified gaps under an explicit `[Blind Spot / Soundiness Boundary]` section, inspect dynamic registration sites manually where feasible, and never invent assumptions for unverified files or unresolved edges.
+
+Format call-graph review findings so downstream coding or specification agents can act without re-deriving context:
+
+```markdown
+**[P0|P1|P2|P3] <Concrete failure mode or authorization gap>**
+- **Evidence & Call Chain:** `<entrypoint symbol -> middleware/layer -> mutation file:line>`
+- **Blind Spot / Soundiness Boundary:** `<dynamic dispatch, DI binding, reflection, inactive build tag, or YAML/DB coupling>`
+- **Violating Sequence:** `<step-by-step race, retry, or auth-bypass sequence>`
+- **Impact:** `<broken invariant, SLO, or security boundary>`
+- **Smallest Surgical Fix:** `<minimum file/boundary change without adding new components>`
+- **Pass/Fail Oracle:** `<fault or load injection schedule and deterministic pass/fail criterion>`
+```
 
 ## Evaluate consequential risks with violating event sequences
 

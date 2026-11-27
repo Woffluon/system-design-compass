@@ -2,6 +2,8 @@
 
 > Choose the smallest artifact that records the decision and unblocks execution. Respect requested formats.
 
+**Contents:** [Full RFC](#full-architecture-document-or-rfc) · [Narrow ADR](#architecture-decision-record) · [Architecture review](#architecture-review) · [Migration plan](#migration-plan) · [Interview feedback](#interview-feedback) · [Implementation plan](#implementation-ready-plan) · [Handoff & validation](#downstream-handoff-contract-and-validation-gate) · [Diagrams](#diagrams)
+
 ## Full architecture document or RFC
 
 Use when a design spans multiple boundaries, teams, interfaces, or quality attributes.
@@ -22,7 +24,7 @@ Omit immaterial RFC sections in narrow ADRs; in full RFCs, collapse immaterial s
 
 ## Architecture Decision Record
 
-Use for one durable choice (`narrow-adr`). Keep narrow ADRs concise (`~200–400 words`); include only facts that change the decision and present its five operational guarantees at a glance:
+Use for one durable choice (`narrow-adr`). Keep narrow ADRs within 200-400 words. Omit full-RFC tables (capacity matrices, multi-phase migration schedules, or speculative service diagrams), avoid adding unrequested components, and include only facts that change the decision plus the five operational guarantees below:
 
 ```markdown
 # ADR-NNN: Decision title
@@ -84,6 +86,26 @@ Close practice sessions with four concrete items, distinguishing interview simpl
 ## Implementation-ready plan
 
 Group work into dependency-ordered vertical slices stating outcome, contract/data boundary, prerequisites, fault/invariant verification, rollout, and rollback. Leave code choices open only when contracts, invariants, migration safety, and operations are unaffected.
+
+## Downstream handoff contract and validation gate
+
+When handing an approved architecture artifact to a downstream coding or specification agent, emit a self-contained handoff free of skill paths or unverified vendor limits:
+
+1. **Decision and state boundary:** authoritative state owner, enforcing layer, and explicit non-goals.
+2. **Contracts and auth:** API/event schema, scoped retry identity, authorization check point, and external outcome reconciliation.
+3. **Ordered execution slices:** vertical implementation or migration steps with mixed-version compatibility, drain barriers, and traffic-gated rollback/contraction (never calendar-day gates).
+4. **Open boundaries:** labeled `[Assumption]` items and explicit unknowns with validation owners.
+5. **Verification oracle:** concrete fault schedule, `Proposed` thresholds, and deterministic pass/fail oracle.
+
+Before delivering any ADR, review, migration plan, or postmortem in CLI/IDE mode, pipe the Markdown draft through the local contract validator:
+
+```bash
+python scripts/check_deliverable.py --kind <adr|review|migration|postmortem> --input -
+```
+
+Pass `--strict-adr-words` on narrow ADRs to enforce the `120-450` word window around the `200-400` word target (`exit 1` on violations instead of a warning). For `migration` deliverables, the validator rejects date- or day-based cutover and rollback gates (such as `"after 7 days"`); gate contraction on zero legacy traffic and signed reconciliation instead. Fix every reported failure and re-run until `exit 0`.
+
+In tool-free or offline environments where shell commands cannot run, verify every `Pre-output check` and `check_deliverable.py` contract rule line by line manually (state owner, violating sequence, fault schedule, pass/fail oracle, `Proposed` thresholds, ADR length, and zero date-based rollback gates) and state explicitly in the response that `scripts/check_deliverable.py` could not run in a tool-free environment.
 
 ## Diagrams
 
