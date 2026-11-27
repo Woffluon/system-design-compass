@@ -2,6 +2,8 @@
 
 > Use when a running system must change without losing correctness, availability, or reversibility.
 
+**Contents:** [Invariants](#bound-current-state-target-state-and-migration-invariants) · [Migration shapes](#select-a-reversible-migration-shape) · [Data movement & repair](#design-data-movement-reconciliation-and-repair) · [Phases & rollback](#define-executable-phases-quantitative-abort-thresholds-and-rollback-boundaries) · [Blast radius](#control-operational-risk-and-blast-radius) · [Contraction gate](#gate-schema-and-system-contraction-on-zero-legacy-traffic-and-durable-apply) · [Completion gate](#completion-gate)
+
 ## Bound current state, target state, and migration invariants
 
 Describe the current architecture from evidence, pressure forcing change, and minimum target capability. Separate the end state from the next safe step. Record release independence, client upgrade lag, data residency, maintenance windows, and maximum acceptable rollback loss.

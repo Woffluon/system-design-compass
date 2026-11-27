@@ -2,6 +2,8 @@
 
 > Use only for interview practice or time-boxed design exercises. Optimize for clear reasoning and prioritization over document length.
 
+**Contents:** [Decision budget](#allocate-the-45-minute-decision-budget) · [Simple baseline](#defend-decisions-against-the-simple-baseline) · [Grading rigor](#grade-reasoning-and-trade-off-rigor)
+
 ## Allocate the 45-minute decision budget
 
 | Phase | Focus |

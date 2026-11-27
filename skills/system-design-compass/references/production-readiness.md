@@ -2,6 +2,8 @@
 
 > Use for production design, review, or migration in proportion to business criticality and lifecycle stage.
 
+**Contents:** [Reliability & recovery](#reliability-and-recovery) · [Observability](#observability-and-operations) · [Security & abuse](#security-privacy-and-abuse-resistance) · [Performance & capacity](#performance-and-capacity) · [Cost](#cost-and-sustainability) · [Delivery & launch](#delivery-and-launch) · [References](#primary-references)
+
 ## Reliability and recovery
 
 Anchor on user journeys, SLOs, RTO/RPO, and data-loss impact. A journey cannot exceed the availability or latency of its mandatory synchronous dependencies without redundancy, caching, degradation, or decoupling.
@@ -35,7 +37,7 @@ Use structured logs for diagnosis, bounded-cardinality metrics for trends and al
 
 Every alert requires a user-impacting or invariant-violating condition, a **quantitative intervention threshold** (label proposed values), a named owner, and a bounded runbook action:
 
-- Page on SLO burn, durable invariant drift, **uncompleted business backlog age exceeding the completion budget**, or **exhausted attempts accumulating without repair**.
+- Page on SLO burn, durable invariant drift, **uncompleted business backlog age exceeding the completion budget**, or **exhausted attempts accumulating without repair** ([backlog drain intervention](distributed-systems.md#backlog-drain-capacity-and-age-triggered-intervention)).
 - Never treat dead-letter enqueue or retry exhaustion as completed business work.
 - Pair high-risk runbooks and automated mitigations with explicit stop conditions and audit trails.
 
@@ -56,7 +58,7 @@ Model abuse separately from unauthenticated access: valid credentials can still 
 
 Budget latency by journey and payload class. Identify serial hops, fan-out, lock contention, cache misses, unindexed scans, serialization overhead, cross-zone calls, and cold starts; optimize the measured bottleneck.
 
-Size capacity for baseline peak, growth forecast, failure-domain loss, deployment overlap, compaction/maintenance, and backlog drain after outage. Specify autoscaling signal, reaction lag, min/max bounds, warm-up time, and behavior at cap. **Autoscaling does not replace admission control or backpressure.**
+Size capacity for baseline peak, growth forecast, failure-domain loss, deployment overlap, compaction/maintenance, and post-outage backlog drain per [peak attempt demand and backlog drain](requirements-estimation.md#derive-peak-attempt-demand-and-backlog-drain-under-duplicates-and-retries) and [backlog drain intervention](distributed-systems.md#backlog-drain-capacity-and-age-triggered-intervention). Specify autoscaling signal, reaction lag, min/max bounds, warm-up time, and behavior at cap. **Autoscaling does not replace admission control or backpressure.**
 
 Validate with load, stress, soak, spike, and failover tests using production-like payload sizes and hot-key skew.
 

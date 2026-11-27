@@ -2,6 +2,8 @@
 
 > Use this mode for a new system, a major redesign, or a request whose architecture has not been established.
 
+**Contents:** [Decision frame](#establish-the-decision-frame-and-explicit-assumptions) · [Decision order](#build-the-architecture-in-decision-order) · [Deliverable format](#match-deliverable-format-to-decision-scope) · [Completion gate](#completion-gate)
+
 ## Establish the decision frame and explicit assumptions
 
 Start with the business outcome, primary readers, delivery horizon, team and operational constraints, platform commitments, and cost of failure.
@@ -24,7 +26,7 @@ Define actors, external systems, trust boundaries, core journeys, and non-goals.
 
 ### 2. Make quality attributes measurable
 
-Prioritize quality attributes and translate vague terms ("fast," "reliable," "real time") into SLIs, targets, measurement points, windows, and RTO/RPO using the `requirements-estimation.md` guide (routed from `SKILL.md`).
+Prioritize quality attributes and translate vague terms ("fast," "reliable," "real time") into SLIs, targets, measurement points, windows, and RTO/RPO using [service objectives](requirements-estimation.md#define-service-objectives-from-user-experience).
 
 ### 3. Estimate decision-driving demand
 
@@ -32,7 +34,7 @@ Estimate peak read/write/event rates, concurrency, payload size, retention, stor
 
 ### 4. Define contracts, invariants, and consistency boundaries
 
-Specify commands, queries, events, lifecycle transitions, authorization scope, and idempotency identity. State which transitions require atomic or strong enforcement by the authoritative state owner and where bounded staleness is acceptable (see `interfaces-data.md` via `SKILL.md`).
+Specify commands, queries, events, lifecycle transitions, authorization scope, and idempotency identity. State which transitions require atomic or strong enforcement by the authoritative state owner and where bounded staleness is acceptable (see [interaction semantics](interfaces-data.md#choose-interaction-semantics)).
 
 ### 5. Start from the simplest sufficient baseline
 
@@ -56,11 +58,11 @@ Connect every technology choice to a requirement. Never claim horizontal scalabi
 
 ### 7. Design for failure, overload, and recovery
 
-Walk through dependency timeouts, overload, partial failure, data corruption, zone/region loss, bad deployment, credential compromise, and operator error. Define degraded behavior, retry ownership, backpressure or shedding, repair ownership, observability, and escalation using `production-readiness.md` (via `SKILL.md`).
+Walk through dependency timeouts, overload, partial failure, data corruption, zone/region loss, bad deployment, credential compromise, and operator error. Define degraded behavior, retry ownership, backpressure or shedding, repair ownership, observability, and escalation using [reliability and recovery](production-readiness.md#reliability-and-recovery).
 
 ### 8. Define safe delivery and rollback boundaries
 
-Separate the target architecture from the smallest safe next slice. Specify interface compatibility, data migration, shadow or canary verification, quantitative abort thresholds, and an executable rollback action using `evolve.md` (via `SKILL.md`). A feature flag or canary without a verified state and external-effect rollback boundary does not explain recovery from a bad deployment.
+Separate the target architecture from the smallest safe next slice. Specify interface compatibility, data migration, shadow or canary verification, quantitative abort thresholds, and an executable rollback action using [executable phases and rollback](evolve.md#define-executable-phases-quantitative-abort-thresholds-and-rollback-boundaries). A feature flag or canary without a verified state and external-effect rollback boundary does not explain recovery from a bad deployment.
 
 ## Match deliverable format to decision scope
 
@@ -69,7 +71,7 @@ Separate the target architecture from the smallest safe next slice. Specify inte
 - **Full RFC**: multiple interfaces, data boundaries, quality attributes, or teams.
 - **Decision-complete implementation plan**: execution handoff.
 
-Follow `deliverables-diagrams.md` (via `SKILL.md`) for format contracts. Omit sections that do not change a decision; never omit a critical invariant, violating sequence, major risk, or verification method for brevity.
+Follow [deliverable format contracts](deliverables-diagrams.md#full-architecture-document-or-rfc) for artifact structure. Omit sections that do not change a decision; never omit a critical invariant, violating sequence, major risk, or verification method for brevity.
 
 ## Completion gate
 

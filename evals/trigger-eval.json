@@ -122,6 +122,66 @@
       "category": "dependency-version-bump",
       "shared_keywords": ["version", "upgrade", "config"],
       "prompt": "Bump eslint and @typescript-eslint/parser to the latest minor versions in package.json and update deprecated rule names in eslint.config.mjs so npm run lint passes."
+    },
+    {
+      "id": "pos-ai-agent-orchestration",
+      "should_trigger": true,
+      "category": "ai-agent-systems",
+      "target_mode": "design",
+      "shared_keywords": ["agent", "tool", "budget", "guardrail"],
+      "prompt": "Design the execution boundary, token/step budget, and idempotent side-effect guardrails for a multi-step customer-support AI agent calling billing APIs."
+    },
+    {
+      "id": "pos-code-call-graph-review",
+      "should_trigger": true,
+      "category": "code-backed-review",
+      "target_mode": "review",
+      "shared_keywords": ["call-graph", "review", "dependency", "blast radius"],
+      "prompt": "Trace the call graph from CheckoutController through OrderService and PaymentClient in this repo to find synchronous tail-latency coupling and unguarded external effects."
+    },
+    {
+      "id": "pos-postmortem-remediation",
+      "should_trigger": true,
+      "category": "postmortem-remediation",
+      "target_mode": "evolve",
+      "shared_keywords": ["postmortem", "outage", "remediation", "architecture"],
+      "prompt": "Read incidents/2026-09-retry-storm.md and turn the contributing causes into architectural remediation gates with quantitative abort thresholds and repair owners."
+    },
+    {
+      "id": "pos-multitenant-saas-isolation",
+      "should_trigger": true,
+      "category": "multitenant-saas",
+      "target_mode": "design",
+      "shared_keywords": ["multi-tenant", "SaaS", "isolation", "quota"],
+      "prompt": "Our B2B SaaS shares one PostgreSQL cluster and worker pool across enterprise and free tiers. Design tenant isolation, per-tenant fairness quotas, and shard migration boundaries."
+    },
+    {
+      "id": "neg-settled-spec-implementation",
+      "should_trigger": false,
+      "category": "settled-spec-coding",
+      "shared_keywords": ["spec", "architecture", "implement"],
+      "prompt": "Implement the approved user-profile export task list in docs/specs/profile-export.md step by step without altering any system boundaries or schemas."
+    },
+    {
+      "id": "neg-single-function-profiling",
+      "should_trigger": false,
+      "category": "local-performance-profiling",
+      "shared_keywords": ["latency", "bottleneck", "memory"],
+      "prompt": "Profile parse_csv_row in parsers/csv_stream.py for memory allocations and rewrite the inner loop to cut per-row overhead by 30%."
+    },
+    {
+      "id": "neg-local-debugging-stacktrace",
+      "should_trigger": false,
+      "category": "local-bug-debugging",
+      "shared_keywords": ["crash", "timeout", "trace"],
+      "prompt": "Debug why tests/test_csv_stream.py fails with UnicodeDecodeError on Windows CRLF fixtures and fix the file open encoding."
+    },
+    {
+      "id": "neg-prompt-copy-tweak",
+      "should_trigger": false,
+      "category": "prompt-copywriting",
+      "shared_keywords": ["AI", "agent", "system"],
+      "prompt": "Rewrite the greeting tone in prompts/support_welcome.txt to be shorter and clearer for end users without changing any tool definitions or agent boundaries."
     }
   ]
 }

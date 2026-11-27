@@ -2,6 +2,8 @@
 
 > Prioritize invariants, authoritative owners, auditability, and deterministic recovery before throughput.
 
+**Contents:** [24. Reservation](#24-reservation-system) · [25. Leaderboard](#25-real-time-leaderboard) · [26. Payment](#26-payment-system) · [27. Wallet & ledger](#27-digital-wallet-and-ledger) · [28. Exchange matching](#28-stock-exchange-and-matching)
+
 ---
 
 ## 24. Reservation system
@@ -42,7 +44,7 @@
 
 **Failure prompts:** timeout after PSP success, **duplicate or out-of-order provider webhooks** (`AUTHORIZED` after `CAPTURED`/`REFUNDED`), crash between PSP response and local commit, partial refund race, settlement drift missed by API polling.
 
-**Trade-offs:** persisted intent state machine (`CREATED -> IN_FLIGHT -> AUTHORIZED -> CAPTURED -> SETTLED`) with deterministic per-attempt PSP keys, monotonic webhook guards, `IN_FLIGHT` outcome sweeps, T+N settlement statement reconciliation, and compensating double-entry reversal/refund postings—see [external-outcome mechanism](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction) for the crash-window and reconciliation protocol.
+**Trade-offs:** persisted intent state machine (`CREATED -> IN_FLIGHT -> AUTHORIZED -> CAPTURED -> SETTLED`) backed by double-entry ledger postings; enforce crash-window safety, webhook monotonicity, T+N settlement reconciliation, and compensating reversals via the [external-outcome protocol](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction).
 
 ---
 
@@ -56,7 +58,7 @@
 
 **Failure prompts:** concurrent double-spend race, partial cross-shard posting, **duplicate or out-of-order funding/payout webhooks**, stuck cross-shard hold, row mutation, snapshot/journal drift.
 
-**Trade-offs:** single-writer account partition or serializable ledger transaction; hold-then-capture for cross-shard/external transfers; monotonic funding/payout webhook guards, custodian settlement reconciliation, and immutable contra-postings for settled reversals—resolve provider events via [external-outcome mechanism](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction).
+**Trade-offs:** single-writer account partition or serializable ledger transaction; hold-then-capture for cross-shard/external transfers; resolve funding/payout outcomes, custodian reconciliation, and immutable contra-postings via the [external-outcome protocol](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction).
 
 ---
 

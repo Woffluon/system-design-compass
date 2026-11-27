@@ -44,7 +44,7 @@
 
 **Failure prompts:** post-send delivery record loss before commit (push/SMS/webhook), stale device token, provider throttling, consent/quiet-hours race, thundering retry, unowned DLQ growth.
 
-**Trade-offs:** durable outbox acceptance before async dispatch; pre-send `IN_FLIGHT` record plus provider idempotency key per [external-outcome resolution](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction); transactional vs bulk queues. Size degraded completion above retry-multiplied demand per [estimation](requirements-estimation.md#derive-peak-attempt-demand-and-backlog-drain-under-duplicates-and-retries) and assign an owned DLQ repair path ([backlog drain](distributed-systems.md#backlog-drain-capacity-and-age-triggered-intervention)).
+**Trade-offs:** durable outbox acceptance before async dispatch; transactional vs bulk queues; reconcile provider sends per [external-outcome resolution](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction). Size queue drain capacity ([estimation](requirements-estimation.md#derive-peak-attempt-demand-and-backlog-drain-under-duplicates-and-retries)) and assign an owned DLQ repair path ([backlog drain](distributed-systems.md#backlog-drain-capacity-and-age-triggered-intervention)).
 
 ---
 

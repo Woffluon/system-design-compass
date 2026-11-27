@@ -2,6 +2,8 @@
 
 > Use this reference when state crosses processes, machines, zones, or regions. Choose mechanisms from required semantics and failure behavior rather than popularity.
 
+**Contents:** [Partitioning](#partitioning-and-placement) · [Replication](#replication-and-consistency) · [Caching](#caching) · [Messaging & streams](#messaging-and-stream-processing) · [Coordination & time](#coordination-time-and-identity) · [Overload](#overload-and-partial-failure) · [Rebalancing & recovery](#rebalancing-and-recovery)
+
 ## Partitioning and placement
 
 Partition to address a proven load or fault-isolation limit. Define partition key, routing owner, replication unit, rebalancing procedure, and maximum partition size.
@@ -34,13 +36,13 @@ Protect hot or cold keys with request coalescing, bounded concurrency, jittered 
 
 Specify producer acknowledgement point, durability, partitioning, ordering scope, consumer group semantics, retry budget, backpressure, and retention/replay rules. Make at-least-once consumers idempotent or deduplicated within the state-mutation transaction. Pair state writes with a transactional outbox or log-based change capture, and retain inbox deduplication keys beyond maximum replay age.
 
-For windowed stream aggregation, define event time versus processing time, allowed lateness, watermarks, retractions, and deterministic replay. Turn delivery and queue claims into concrete fault schedules and pass/fail oracles (open `decision-validation.md` from `SKILL.md` when needed).
+For windowed stream aggregation, define event time versus processing time, allowed lateness, watermarks, retractions, and deterministic replay. Turn delivery and queue claims into concrete fault schedules and pass/fail oracles ([ambiguous delivery and terminal repair](decision-validation.md#ambiguous-delivery-and-terminal-repair)).
 
 ### Worker crashes, lease expiry overlap, and retry amplification
 
 Queue consumers and outbound webhook workers face three compounding faults:
 
-1. **Worker crash after remote effect before ack/record:** when a worker commits an external effect and crashes before recording local completion or acking the broker, redelivery repeats the call unless pre-call intent state and outcome resolution follow [external-outcome resolution](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction).
+1. **Worker crash after remote effect before ack/record:** persist pre-call intent and resolve ambiguous outcomes per [external-outcome resolution](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction).
 2. **Lease expiry and worker overlap with fencing tokens:** a stalled worker (GC pause, network hang, slow downstream) outlives its broker visibility timeout or lease expiry while still running. The broker hands the job to a second worker, creating concurrent overlapping execution. Require a monotonically increasing **fencing token** (or version check) enforced at the authoritative store/effect boundary so a stale lease owner cannot overwrite newer state or emit duplicate webhooks.
 3. **Retry amplification:** when downstream latency approaches the call timeout or lease duration, leases expire mid-flight while callers and consumers retry concurrently. Overlapping workers plus multi-layer retries multiply in-flight load (`retry amplification`), saturating worker pools even at flat arrival rates. Enforce `lease_duration > call_timeout + local_record_margin`, assign one retry owner per boundary, use jittered exponential backoff, and cap retry concurrency.
 

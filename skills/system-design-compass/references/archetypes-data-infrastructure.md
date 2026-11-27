@@ -2,6 +2,8 @@
 
 > Expose durability, delivery invariants, authoritative owners, and repair boundaries before selecting products.
 
+**Contents:** [19. Message queue](#19-distributed-message-queue) · [20. Metrics & alerting](#20-metrics-monitoring-and-alerting) · [21. Ad clicks](#21-event-aggregation-and-ad-clicks) · [22. Email service](#22-distributed-email-service) · [23. Object storage](#23-object-storage)
+
 ---
 
 ## 19. Distributed message queue
@@ -14,7 +16,7 @@
 
 **Failure prompts:** broker/leader loss, unclean election, producer duplicate, post-effect ack/offset loss, poison loop, slow consumer head-of-line block, rebalance storm, unowned DLQ exhaustion.
 
-**Trade-offs:** append log (offset replay, partition order) vs work queue (visibility lease/ack); quorum vs leader ack. Close the post-effect crash window via pre-call intent state and [external-outcome resolution](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction); size degraded completion above retry-multiplied demand ([estimation](requirements-estimation.md#derive-peak-attempt-demand-and-backlog-drain-under-duplicates-and-retries)) with an owned DLQ repair path ([backlog drain](distributed-systems.md#backlog-drain-capacity-and-age-triggered-intervention)).
+**Trade-offs:** append log (offset replay, partition order) vs work queue (visibility lease/ack); quorum vs leader ack. Close the post-effect crash window via [external-outcome resolution](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction); size capacity for retries ([estimation](requirements-estimation.md#derive-peak-attempt-demand-and-backlog-drain-under-duplicates-and-retries)) and pair DLQs with an owned repair path ([backlog drain](distributed-systems.md#backlog-drain-capacity-and-age-triggered-intervention)).
 
 ---
 
@@ -56,7 +58,7 @@
 
 **Failure prompts:** crash after remote SMTP `250 OK` before local delivery commit, ambiguous SMTP timeout, bounce loop, shared-IP blacklist contamination, malicious attachment, mailbox/index drift, unowned DLQ backlog.
 
-**Trade-offs:** durable `IN_FLIGHT` pre-send record with deterministic `Message-ID` ([external-outcome resolution](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction)); transactional vs bulk IP pool isolation; blob attachments with metadata log; derived search. Size workers for retry-multiplied completion capacity ([estimation](requirements-estimation.md#derive-peak-attempt-demand-and-backlog-drain-under-duplicates-and-retries)) and assign an owned DLQ repair path ([backlog drain](distributed-systems.md#backlog-drain-capacity-and-age-triggered-intervention)).
+**Trade-offs:** bind SMTP sends to deterministic `Message-ID` keys via [external-outcome resolution](interfaces-data.md#resolve-an-external-outcome-before-retry-or-correction); separate transactional and bulk IP pools, store attachments as blobs with a metadata log, and treat search as derived. Size worker capacity ([estimation](requirements-estimation.md#derive-peak-attempt-demand-and-backlog-drain-under-duplicates-and-retries)) and assign an owned DLQ repair path ([backlog drain](distributed-systems.md#backlog-drain-capacity-and-age-triggered-intervention)).
 
 ---
 

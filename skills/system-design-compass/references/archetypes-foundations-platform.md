@@ -34,13 +34,13 @@
 
 **Failure prompts:** average-only sizing, unit mismatch, false precision, unmodeled retry/recovery amplification, undersized downstream bottleneck.
 
-**Trade-offs:** range model vs simulation. Derive queue and compute capacity from peak input plus retry and recovery drain multipliers rather than invented point estimates.
+**Trade-offs:** range model vs simulation. Derive queue and compute capacity from peak input plus retry and recovery drain multipliers per [peak attempt demand and backlog drain](requirements-estimation.md#derive-peak-attempt-demand-and-backlog-drain-under-duplicates-and-retries) rather than invented point estimates.
 
 ---
 
 ## 3. System design framework
 
-**Use when:** a request is broad, ambiguous, or risks becoming an ungrounded component list. Follow the full [design workflow](design.md) (routed from `SKILL.md`): trace every component to a requirement, invariant, authoritative state owner, violating event sequence, and fault oracle rather than listing products.
+**Use when:** a request is broad, ambiguous, or risks becoming an ungrounded component list. Follow the full [design workflow](design.md): trace every component to a requirement, invariant, authoritative state owner, violating event sequence, and fault oracle rather than listing products.
 
 ---
 
